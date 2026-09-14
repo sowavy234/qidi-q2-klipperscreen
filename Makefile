@@ -20,4 +20,4 @@ check-c:
 
 check-python:
 	python3 -m unittest discover -s tests -p 'test_*.py'
-	python3 -m py_compile tools/q2-moonraker-features.py
+	python3 -m py_compile tools/q2-moonraker-features.py tools/q2-filament.py

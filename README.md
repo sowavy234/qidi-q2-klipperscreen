@@ -365,6 +365,42 @@ python3 /home/qidi/q2-moonraker-features.py --json
 The probe only reads Moonraker's object list. It does not issue G-code. Missing
 objects or macros are treated as unsupported and should remain hidden.
 
+### Filament
+
+The dedicated **Filament** workflow uses known material profiles rather than
+accepting arbitrary temperatures. Select a profile to review its nozzle and bed
+targets before applying them through the normal KlipperScreen temperature
+controls:
+
+| Profile | Nozzle | Bed |
+|---|---:|---:|
+| PLA | 220 °C | 60 °C |
+| PETG | 245 °C | 80 °C |
+| ABS / ASA | 260 °C | 100 °C |
+| TPU | 230 °C | 50 °C |
+
+The mapping is available without a printer connection:
+
+```sh
+python3 /home/qidi/q2-filament.py --profile petg
+```
+
+Load, unload, purge, and tool-selection buttons remain conditional on detected
+Klipper macros. The profile helper never emits G-code and unknown materials are
+rejected.
+
+### Camera
+
+The **Camera** section continues to use KlipperScreen's existing `libmpv`
+path. It is available only when both a `/dev/video*` device and the installed
+`libmpv` runtime are present; otherwise the section should stay hidden:
+
+```sh
+python3 /home/qidi/q2-moonraker-features.py --json
+```
+
+No camera device is assumed, and no camera stream is opened by the probe.
+
 ## Updating an existing installation
 
 Run these commands from a computer with SSH access. They are idempotent and
@@ -376,7 +412,8 @@ cd qidi-q2-klipperscreen
 scp install-klipperscreen-q2-on-printer.sh \
     install-klipperscreen-q2-on-printer.sh.sha256 \
     tools/q2-moonraker-features.py \
-    mks@PRINTER_IP:/home/qidi/
+tools/q2-filament.py \
+mks@PRINTER_IP:/home/qidi/
 ssh mks@PRINTER_IP \
   'cd /home/qidi && sha256sum -c install-klipperscreen-q2-on-printer.sh.sha256'
 ssh mks@PRINTER_IP \

@@ -1,5 +1,6 @@
 import importlib.util
 import pathlib
+import sys
 import unittest
 
 
@@ -7,6 +8,7 @@ MODULE_PATH = pathlib.Path(__file__).parents[1] / "tools" / "q2-moonraker-featur
 SPEC = importlib.util.spec_from_file_location("q2_moonraker_features", MODULE_PATH)
 MODULE = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
+sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
 
 

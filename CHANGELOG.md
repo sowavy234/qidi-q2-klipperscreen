@@ -26,6 +26,13 @@ project emerges from the workshop with a perfect release process.
 - Added compatibility, validation, setup, and rollback documentation for the
   verified QIDI Q2 firmware image.
 
+### Changed
+
+- Added a dedicated filament-profile workflow with validated PLA, PETG, ABS,
+  ASA, and TPU nozzle/bed target mappings.
+- Added camera capability detection that requires both a video device and the
+  existing `libmpv` runtime before the Camera section is shown.
+
 ## [1.3.2] — 2026-07-23
 
 ### Changed

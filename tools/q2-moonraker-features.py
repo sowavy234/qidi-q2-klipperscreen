@@ -10,6 +10,23 @@ import urllib.error
 import urllib.request
 from typing import Any
 
+import importlib.util
+from pathlib import Path
+
+
+def camera_capability() -> dict[str, object]:
+    module_path = Path(__file__).with_name("q2-filament.py")
+    spec = importlib.util.spec_from_file_location("q2_filament", module_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("cannot load QIDI camera capability helper")
+    module = importlib.util.module_from_spec(spec)
+    import sys
+
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    devices = [str(path) for path in Path("/dev").glob("video*")]
+    return module.detect_camera(devices, Path("/usr/lib/aarch64-linux-gnu/libmpv.so.1").exists())
+
 
 def request(base_url: str, path: str) -> dict[str, Any]:
     with urllib.request.urlopen(f"{base_url.rstrip('/')}/{path}", timeout=2) as response:
@@ -27,7 +44,7 @@ def detect(objects: list[str]) -> dict[str, Any]:
         for name in available
         if name.startswith("gcode_macro ")
     )
-    return {
+    features = {
         "motion": all(name in available for name in ("toolhead", "gcode")),
         "homing": "toolhead" in available,
         "extrusion": "extruder" in available,
@@ -45,6 +62,8 @@ def detect(objects: list[str]) -> dict[str, Any]:
         },
         "gcode_macros": macros,
     }
+    features["camera"] = camera_capability()
+    return features
 
 
 def main() -> int:
