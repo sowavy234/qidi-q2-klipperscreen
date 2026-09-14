@@ -31,6 +31,15 @@ clearance, a rear-zone check, and corner margins. PA6-GF, PA6-CF, and PAHT
 profiles are conservative informational targets and require a hardened
 hotend, enclosure, and dried filament.
 
+The advanced operations configuration is intentionally declarative. It does
+not change Klipper settings automatically. Backups, mesh health, Smart Level,
+and watcher alerts are validated locally; native Moonraker/Klipper endpoints
+and detected macros remain prerequisites.
+
+The Siri/Home Assistant bridge is unavailable until printer-side pairing is
+confirmed. Remote status remains read-only, and sensitive actions require a
+fresh printer-displayed challenge plus a second confirmation on the screen.
+
 ## Known differences
 
 Moonraker object names and Klipper macro names are configuration-dependent.

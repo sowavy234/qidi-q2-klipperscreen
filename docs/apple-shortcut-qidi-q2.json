@@ -1,0 +1,17 @@
+{
+  "name": "QIDI Q2 Safe Controls",
+  "description": "Template for an iPhone Apple Shortcut using a Home Assistant or HTTPS webhook bridge.",
+  "security": {
+    "endpoint": "https://YOUR_HOME_ASSISTANT_OR_WEBHOOK_HOST/api/qidi-q2",
+    "bearer_token": "REPLACE_WITH_A_SECRET_IN_SHORTCUT_STORAGE",
+    "never_commit_real_secrets": true
+  },
+  "actions": [
+    {"label": "Pair printer", "method": "POST", "path": "/pair", "requires_printer_code": true, "confirmation_required": true},
+    {"label": "Status", "method": "GET", "path": "/status"},
+    {"label": "Monitor while printing", "method": "GET", "path": "/monitor", "interval_minutes": 5, "stop_when": ["idle", "complete", "error", "offline"], "alert_on": ["spaghetti", "misprint", "paused", "thermal_failure", "offline"]},
+    {"label": "Request pause and alert", "method": "POST", "path": "/pause-alert", "requires_confirmation": true},
+    {"label": "Confirm safe macro", "method": "POST", "path": "/confirm", "requires_confirmation": true, "requires_printer_challenge": true}
+  ],
+  "notes": "The printer displays a one-time pairing code and a fresh short-lived challenge for sensitive actions. Codes are printer-bound, expire, are single-use where applicable, and are never logged. Shortcuts cannot provide a guaranteed endless background loop. Use the Home Assistant blueprint for continuous five-minute polling. This template contains no secrets and does not call a printer."
+}

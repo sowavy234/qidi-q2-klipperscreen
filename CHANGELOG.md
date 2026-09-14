@@ -34,6 +34,17 @@ project emerges from the workshop with a perfect release process.
   existing `libmpv` runtime before the Camera section is shown.
 - Added opt-in rear-chute smart-purge validation with configurable geometry,
   soft-limit, homing, Z-clearance, rear-zone, and corner-collision guards.
+- Added dry-run helpers for timestamped non-overwriting configuration backups,
+  speed bounds, full bed-mesh health classification, guarded Smart Level, and
+  authenticated watcher alert payloads.
+- Added a placeholder-only iPhone Shortcut artifact for the Home Assistant or
+  HTTPS webhook bridge.
+- Added bounded five-minute monitoring actions, a Home Assistant continuous
+  automation blueprint, deduplicated problem alerts, and accessible live state
+  color/label classes for printer, mesh, and watcher status.
+- Locked the Siri/Home Assistant bridge behind printer-bound pairing codes,
+  expiring challenges, rate limiting, and second confirmation for
+  safety-critical actions.
 
 ## [1.3.2] — 2026-07-23
 

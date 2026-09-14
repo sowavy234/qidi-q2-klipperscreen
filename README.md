@@ -399,7 +399,69 @@ rejected.
 
 The rear-waste-chute **Smart Purge** button is disabled until measured chute
 geometry is configured in `config/q2-feature-hooks.conf`. There are no fixed Q2
-coordinates in this repository. The validation path requires a homed printer,
+coordinates in this repository.
+
+### Advanced operations: backup, speed, mesh, and watcher
+
+Before applying any local macro/configuration change, make a timestamped,
+non-overwriting archive of `printer_data`; retain at least the five newest
+archives. Restore only after stopping KlipperScreen and reviewing the archive:
+
+```sh
+sudo tar -czf "/home/qidi/q2-backups/qidi-q2-config-$(date -u +%Y%m%dT%H%M%SZ).tar.gz" \
+  -C /home/qidi printer_data
+sudo q2-display-mode enable-qidi
+# Extract a reviewed archive to a staging directory before restoring files.
+```
+
+The speed controls in `config/q2-advanced-operations.conf` are limits only;
+the UI must use supported Klipper/Moonraker native settings and reject values
+outside those limits. The Bed Mesh tile is `good`, `bad`, or `unknown` based
+on the complete reported matrix, tolerance, and freshness; missing or stale
+data never triggers leveling. Smart Level requires detected `Z_TILT_ADJUST`
+and `BED_MESH_CALIBRATE`, a toolhead object, and explicit confirmation.
+
+The optional camera watcher integration has no bundled AI model. When a local
+watcher is configured, it may request the authenticated Moonraker `PAUSE`
+macro and send an authenticated HTTPS Home Assistant/webhook alert. Otherwise
+the watcher remains unavailable. `docs/apple-shortcut-qidi-q2.json` is an
+iPhone Shortcut template for status, pause/alert, and confirmed macro actions.
+
+### Locked Siri/Home Assistant bridge
+
+Remote Siri or Shortcut commands are locked until the phone pairs with the
+printer-specific identity. KlipperScreen shows `Locked / unpaired`,
+`Pending confirmation`, `Paired`, or `Challenge pending`; the printer displays
+the short-lived pairing code during pairing and a fresh challenge for each
+sensitive action. Pairing codes expire, are printer-bound, rate-limited after
+five failures, and never logged or committed. Status is read-only and requires
+pairing. Motion, heating, purge, Smart Level, pause, and cancel require a
+second explicit confirmation on the printer UI; stale, replayed, or
+mismatched-printer requests are rejected. Revoke pairing from the printer
+before changing phones or webhook credentials.
+
+The Shortcut artifact uses placeholders only. Store the bearer token in the
+phone/Home Assistant secret store, not in this repository. The bridge must
+authenticate to Moonraker and must not expose an unauthenticated webhook.
+Replace placeholders in the phone only and never commit a token.
+
+### Monitoring and live state
+
+The Shortcut template describes one bounded five-minute check while the printer
+is printing. iOS may suspend or stop repeated Shortcut execution, so it is not
+an endless monitoring loop. For continuous monitoring, import
+`docs/home-assistant-qidi-q2-monitor.yaml`, configure an authenticated
+`rest_command`, and use `input_boolean.qidi_q2_monitoring` as the stop switch.
+The automation stops when the state is idle, complete, error, or offline.
+Alerts are deduplicated and limited to watcher misprint/spaghetti findings,
+pause, thermal/failure states, or an offline printer.
+
+The live state tile uses existing Moonraker polling/events for state, target and
+actual temperatures, progress, complete mesh health, and camera/watcher
+availability. Idle, heating, printing, paused, completed, error, and offline
+states include a label/icon as well as a high-contrast color. Missing or stale
+mesh and unavailable camera/watcher data are explicitly shown as Unknown or
+Unavailable. The validation path requires a homed printer,
 enabled soft limits, configured rear-zone and corner margins, and a safe Z
 clearance before it can produce a `PURGE_FILAMENT` command. Confirmation is
 required for the final motion/heating action; dry-run validation never emits

@@ -1,0 +1,33 @@
+blueprint:
+  name: QIDI Q2 bounded print monitor
+  description: Poll an authenticated bridge every five minutes while printing.
+  domain: automation
+  input:
+    monitor_url:
+      name: Monitor endpoint
+      selector:
+        text:
+    bearer_token:
+      name: Bridge token
+      selector:
+        text:
+trigger:
+  - platform: time_pattern
+    minutes: "/5"
+condition:
+  - condition: state
+    entity_id: input_boolean.qidi_q2_monitoring
+    state: "on"
+action:
+  - service: rest_command.qidi_q2_monitor
+    data:
+      url: !input monitor_url
+      token: !input bearer_token
+  - choose:
+      - conditions: "{{ states('sensor.qidi_q2_print_state') in ['complete', 'idle', 'error', 'offline'] }}"
+        sequence:
+          - service: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.qidi_q2_monitoring
+mode: single
+# Configure rest_command authentication in secrets.yaml; never place tokens here.

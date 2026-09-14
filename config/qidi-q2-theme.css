@@ -94,3 +94,12 @@ trough highlight {
 .message_popup_error button {
     background-color: #8e2930;
 }
+
+/* State colors are paired with text/icons by the UI; never use color alone. */
+.q2-state-idle { background-color: #2d3748; }
+.q2-state-heating { background-color: #c05621; }
+.q2-state-printing { background-color: #087f5b; }
+.q2-state-paused { background-color: #975a16; }
+.q2-state-complete { background-color: #2b6cb0; }
+.q2-state-error,
+.q2-state-offline { background-color: #4a5568; }

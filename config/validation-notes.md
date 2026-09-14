@@ -12,3 +12,6 @@ The advanced-hook validator is also dry-run only. It emits a candidate macro
 string only after configured geometry, soft limits, homing, clearance, and
 explicit confirmation checks pass. No live printer, watcher, camera stream, or
 webhook was used.
+
+Bridge authorization tests cover printer-bound pairing, expiry, replay and
+identity rejection, rate limiting, and sensitive-action challenge gates.
