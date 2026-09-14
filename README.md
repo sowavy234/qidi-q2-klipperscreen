@@ -247,6 +247,18 @@ enabled only for exact detected `LOAD_FILAMENT`, `UNLOAD_FILAMENT`,
 `PURGE_FILAMENT`, or `SELECT_TOOL` objects; probe errors and unknown values
 disable every optional gate.
 
+### Optional local AI watchdog
+
+`tools/printer_ai_watchdog.py` is an observe-only-by-default service. Copy
+`config/printer-ai-watchdog.json` to `/etc/printer-ai-watchdog.json`, adjust
+the authenticated/local Moonraker endpoint as appropriate, and install
+`config/printer-ai-watchdog.service`. Keep `action_policy.enabled` false until
+offline validation and operator review are complete. Ollama output must be
+strict JSON and can only request `pause` or `firmware_restart`; free-form text
+is rejected. Thermal limits are checked deterministically before any model
+request. The service never executes arbitrary macros or shell commands, and
+the JSONL audit log is secret-redacted and fsync'd per record.
+
 Enter the SSH password when prompted. A successful upload returns to the local
 prompt without drama, fireworks, or a certificate suitable for framing.
 

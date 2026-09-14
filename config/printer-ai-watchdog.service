@@ -1,0 +1,21 @@
+[Unit]
+Description=QIDI Q2 printer AI watchdog
+After=moonraker.service network-online.target
+
+[Service]
+Type=simple
+User=qidi
+Group=qidi
+ExecStart=/usr/bin/python3 /home/qidi/printer_ai_watchdog.py --config /etc/printer-ai-watchdog.json
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/printer-ai-watchdog
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+EnvironmentFile=-/etc/default/printer-ai-watchdog
+
+[Install]
+WantedBy=multi-user.target

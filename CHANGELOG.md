@@ -7,6 +7,9 @@
   of failing installation.
 - Compile probe results into a private, atomic launcher capability file before
   starting KlipperScreen; optional filament macro gates fail closed on errors.
+- Add an opt-in, observe-only local Ollama/Moonraker watchdog with deterministic
+  thermal guards, strict action validation, cooldowns, redacted audit logging,
+  and a hardened systemd template.
 
 This file records public installer releases. The format is inspired by
 [Keep a Changelog](https://keepachangelog.com/), minus the fiction that a home
