@@ -4,6 +4,8 @@ set -u
 export HOME="/home/qidi"
 export DISPLAY=":0"
 export XDG_RUNTIME_DIR="/run/klipperscreen-q2"
+export GDK_BACKEND="x11"
+export GTK_THEME="material-darker"
 
 XVFB="/usr/bin/Xvfb"
 BRIDGE="/usr/local/libexec/q2/q2-x11-fb-bridge"

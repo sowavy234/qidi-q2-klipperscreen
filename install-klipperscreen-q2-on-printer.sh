@@ -13,7 +13,7 @@
 set -Eeuo pipefail
 IFS=$'\n\t'
 
-readonly INSTALLER_VERSION="1.3.2"
+readonly INSTALLER_VERSION="1.4.0"
 readonly SUPPORTED_ARCH="arm64"
 readonly SUPPORTED_OS="debian"
 readonly SUPPORTED_OS_VERSION="11"
@@ -303,7 +303,7 @@ install_system_packages() {
 
     export DEBIAN_FRONTEND=noninteractive
 
-    for package in python3-venv libmpv1; do
+    for package in python3-venv libmpv1 network-manager; do
         if [[ "$(dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null || true)" != "installed" ]]; then
             missing_packages+=("$package")
         fi
@@ -357,6 +357,13 @@ PY
         "${apt_command[@]}" install -y --no-install-recommends "${missing_packages[@]}"
     else
         log "Required Debian runtime packages are already installed."
+    fi
+
+    if systemctl list-unit-files NetworkManager.service --no-legend >/dev/null 2>&1; then
+        systemctl enable --now NetworkManager.service ||
+            die "NetworkManager is installed but could not be started."
+    else
+        die "NetworkManager.service is unavailable; Wi-Fi support cannot be enabled."
     fi
 
     installed_common="$(dpkg-query -W -f='${Version}' xserver-common 2>/dev/null || true)"
@@ -423,6 +430,51 @@ if marker not in text:
 PY
     python3 -m py_compile "${KS_DIR}/ks_includes/functions.py"
     chown qidi:qidi "${KS_DIR}/ks_includes/functions.py"
+
+    local css="${KS_DIR}/styles/material-darker/style.css"
+    if [[ -f "$css" ]] && ! grep -q 'QIDI Q2 downstream polish' "$css"; then
+        cat >>"$css" <<'Q2_THEME'
+
+/* QIDI Q2 downstream polish for the pinned material-darker KlipperScreen theme. */
+@define-color color_1 #f4f7f8;
+@define-color color_2 #19c3b1;
+@define-color color_3 #ff8a3d;
+@define-color color_4 #93a4ab;
+@define-color color_5 #10171b;
+@define-color background-color_2 #172126;
+@define-color background-color_3 #2b3b42;
+@define-color background-color_4 #1e2c32;
+@define-color background-color_5 #245343;
+@define-color background-color_6 #075e67;
+@define-color background-color_9 #a95123;
+@define-color background-color_10 #8e2930;
+@define-color border-color_6 #60757d;
+@define-color border-color_7 #263940;
+* { font-family: Roboto, Sans; }
+window, junction, list row, treeview.view { background-color: #10171b; }
+button { background-color: #172126; border-color: #263940; border-radius: 0.35em; }
+button.color1, button.color2, button.color3, button.color4 {
+    background-color: #1e2c32;
+    border-color: #263940;
+    border-radius: 0.35em;
+    padding-top: 0.42em;
+    padding-bottom: 0.42em;
+}
+button:active, button:focus, button.color1:focus, button.color2:focus,
+button.color3:focus, button.color4:focus {
+    background-color: #2b3b42;
+    border-color: #19c3b1;
+}
+button.update, .active image { color: #19c3b1; border-color: #19c3b1; }
+button.invalid, .dialog-warning { color: #ff8a3d; border-color: #ff8a3d; }
+switch:checked, trough progress, trough highlight { background-color: #245343; }
+.active_device, .horizontal_togglebuttons_active { background-color: #075e67; }
+.frame-item { border-bottom-color: #263940; border-bottom-width: 1px; }
+.message_popup_echo, .message_popup_echo button { background-color: #245343; }
+.message_popup_warning, .message_popup_warning button { background-color: #a95123; }
+.message_popup_error, .message_popup_error button { background-color: #8e2930; }
+Q2_THEME
+    fi
 }
 
 install_python_environment() {
@@ -555,6 +607,8 @@ set -u
 export HOME="/home/qidi"
 export DISPLAY=":0"
 export XDG_RUNTIME_DIR="/run/klipperscreen-q2"
+export GDK_BACKEND="x11"
+export GTK_THEME="material-darker"
 
 XVFB="/usr/bin/Xvfb"
 BRIDGE="/usr/local/libexec/q2/q2-x11-fb-bridge"
@@ -733,12 +787,14 @@ DISPLAY_MODE
     cat >"${work_dir}/KlipperScreen.conf" <<'KS_CONFIG'
 [main]
 language: en
-font_size: small
+theme: material-darker
+font_size: large
 show_cursor: False
 confirm_estop: True
 use_dpms: False
 screen_blanking: off
 screen_blanking_printing: off
+default_printer: QIDI Q2
 
 [printer QIDI Q2]
 moonraker_host: 127.0.0.1

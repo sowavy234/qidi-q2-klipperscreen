@@ -27,6 +27,11 @@ q2-x11-fb-bridge
         └── Goodix input ──► affine transform ──► XTEST
 ```
 
+KlipperScreen's Network panel uses the pinned `sdbus_networkmanager` Python
+client and the printer's system `NetworkManager.service`. The installer adds
+the Debian NetworkManager package and enables the service without replacing
+the vendor QIDI UI or its existing network configuration.
+
 The bridge captures the X root window through MIT-SHM at 20 FPS and copies each
 frame into the 32-bit `rockchipdrmfb`. The same process reads
 `/dev/input/event0`, applies the measured affine matrix, and injects calibrated

@@ -1,0 +1,96 @@
+/* QIDI Q2 downstream polish for the pinned material-darker KlipperScreen theme. */
+@define-color color_1 #f4f7f8;
+@define-color color_2 #19c3b1;
+@define-color color_3 #ff8a3d;
+@define-color color_4 #93a4ab;
+@define-color color_5 #10171b;
+@define-color background-color_2 #172126;
+@define-color background-color_3 #2b3b42;
+@define-color background-color_4 #1e2c32;
+@define-color background-color_5 #245343;
+@define-color background-color_6 #075e67;
+@define-color background-color_9 #a95123;
+@define-color background-color_10 #8e2930;
+@define-color border-color_6 #60757d;
+@define-color border-color_7 #263940;
+
+* {
+    font-family: Roboto, Sans;
+}
+
+window,
+junction,
+list row,
+treeview.view {
+    background-color: #10171b;
+}
+
+button {
+    background-color: #172126;
+    border-color: #263940;
+    border-radius: 0.35em;
+}
+
+button.color1,
+button.color2,
+button.color3,
+button.color4 {
+    background-color: #1e2c32;
+    border-color: #263940;
+    border-radius: 0.35em;
+    padding-top: 0.42em;
+    padding-bottom: 0.42em;
+}
+
+button:active,
+button:focus,
+button.color1:focus,
+button.color2:focus,
+button.color3:focus,
+button.color4:focus {
+    background-color: #2b3b42;
+    border-color: #19c3b1;
+}
+
+button.update,
+.active image {
+    color: #19c3b1;
+    border-color: #19c3b1;
+}
+
+button.invalid,
+.dialog-warning {
+    color: #ff8a3d;
+    border-color: #ff8a3d;
+}
+
+switch:checked,
+trough progress,
+trough highlight {
+    background-color: #245343;
+}
+
+.active_device,
+.horizontal_togglebuttons_active {
+    background-color: #075e67;
+}
+
+.frame-item {
+    border-bottom-color: #263940;
+    border-bottom-width: 1px;
+}
+
+.message_popup_echo,
+.message_popup_echo button {
+    background-color: #245343;
+}
+
+.message_popup_warning,
+.message_popup_warning button {
+    background-color: #a95123;
+}
+
+.message_popup_error,
+.message_popup_error button {
+    background-color: #8e2930;
+}

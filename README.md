@@ -42,7 +42,11 @@ self-contained script, executed **on the printer itself**, that turns the stock
 
 - KlipperScreen runs directly on the stock Q2 display.
 - Touch is calibrated, so buttons are pressed where the buttons actually are.
+- A QIDI Q2 visual treatment uses the dark graphite material theme, teal active
+  states, orange warnings, and a larger touch-friendly font.
 - The camera panel works through the installed `libmpv` runtime.
+- Wi-Fi can be configured from KlipperScreen's Network panel using the Q2's
+  existing NetworkManager-backed wireless adapter.
 - A proper splash covers the black gap while GTK wakes up.
 - The stock QIDI interface is kept intact.
 - Swipe up from the bottom edge to open KlipperScreen.
@@ -266,13 +270,33 @@ The installer will:
 
 1. verify the model, firmware, architecture, framebuffer, and print state;
 2. create an initial on-printer backup;
-3. install a pinned KlipperScreen revision and its runtime dependencies;
+3. install a pinned KlipperScreen revision, GTK theme polish, and runtime
+   dependencies including NetworkManager;
 4. install the framebuffer bridge, touch calibration, splash, and gestures;
 5. probe the display stack on a separate X display;
 6. enable KlipperScreen while keeping an emergency route back to QIDI.
 
 The first launch takes a few seconds. The logo is not merely decorative: it
 means the printer is alive and GTK is gathering its thoughts.
+
+### Wi-Fi setup from KlipperScreen
+
+After installation, open **Menu → Network**. The panel can enable or disable
+the wireless radio, scan for nearby access points, and connect to a secured
+network. The installer enables `NetworkManager.service`, which is the service
+used by the upstream KlipperScreen Network panel; it does not replace the
+QIDI client or change Moonraker's configuration.
+
+If no wireless networks are listed, verify the service over SSH:
+
+```sh
+systemctl is-active NetworkManager.service
+nmcli device status
+```
+
+The printer must be on a normal LAN during setup. Guest networks with client
+isolation may allow internet access but prevent SSH, Moonraker, or the stock
+QIDI UI from reaching the printer.
 
 ### 8. Verify the result
 

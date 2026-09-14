@@ -4,6 +4,15 @@ This file records public installer releases. The format is inspired by
 [Keep a Changelog](https://keepachangelog.com/), minus the fiction that a home
 project emerges from the workshop with a perfect release process.
 
+## [1.4.0] — 2026-07-24
+
+### Added
+
+- Added NetworkManager provisioning so KlipperScreen's Wi-Fi panel works on
+  the QIDI Q2 hardware.
+- Added a QIDI Q2 material-darker theme layer with larger touch targets and
+  teal/orange status accents.
+
 ## [1.3.2] — 2026-07-23
 
 ### Changed
