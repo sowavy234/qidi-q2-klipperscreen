@@ -45,6 +45,8 @@ project emerges from the workshop with a perfect release process.
 - Locked the Siri/Home Assistant bridge behind printer-bound pairing codes,
   expiring challenges, rate limiting, and second confirmation for
   safety-critical actions.
+- Hardened bridge authorization to reject unknown actions and single-use
+  pairing-code replay.
 
 ## [1.3.2] — 2026-07-23
 

@@ -46,7 +46,7 @@ class BridgeAuthorizer:
         pairing = self._pairing
         if self._failures >= 5:
             return False
-        if not pairing or pairing.expires_at <= self._clock():
+        if not pairing or pairing.paired or pairing.expires_at <= self._clock():
             return False
         valid = (
             hmac.compare_digest(pairing.printer_id, printer_id)
@@ -68,14 +68,23 @@ class BridgeAuthorizer:
         self._challenge_used = False
         return code
 
-    def authorize(self, printer_id: str, action: str, challenge: str | None = None) -> bool:
+    def authorize(
+        self,
+        printer_id: str,
+        action: str,
+        challenge: str | None = None,
+        printer_confirmed: bool = False,
+    ) -> bool:
         if not self._pairing or not self._pairing.paired:
             return False
         if printer_id != self.printer_id:
             return False
+        if action != "status" and action not in SENSITIVE_ACTIONS:
+            return False
         if action in SENSITIVE_ACTIONS:
             if (
                 not challenge
+                or not printer_confirmed
                 or self._challenge_used
                 or self._challenge_expires <= self._clock()
                 or not self._challenge_hash

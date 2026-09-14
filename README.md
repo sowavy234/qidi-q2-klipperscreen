@@ -492,9 +492,13 @@ cd qidi-q2-klipperscreen
 scp install-klipperscreen-q2-on-printer.sh \
     install-klipperscreen-q2-on-printer.sh.sha256 \
     tools/q2-moonraker-features.py \
-tools/q2-filament.py \
-tools/q2-safety.py \
-config/q2-feature-hooks.conf \
+    tools/q2-filament.py \
+    tools/q2-safety.py \
+    tools/q2-operations.py \
+    tools/q2-monitor.py \
+    tools/q2-bridge-auth.py \
+    config/q2-feature-hooks.conf \
+    config/q2-advanced-operations.conf \
 mks@PRINTER_IP:/home/qidi/
 ssh mks@PRINTER_IP \
   'cd /home/qidi && sha256sum -c install-klipperscreen-q2-on-printer.sh.sha256'
@@ -502,6 +506,11 @@ ssh mks@PRINTER_IP \
   'sudo bash /home/qidi/install-klipperscreen-q2-on-printer.sh install --no-enable'
 ssh mks@PRINTER_IP 'sudo q2-display-mode status'
 ```
+
+The optional helper/config files are read-only probes and templates; the
+installer does not silently apply their macro names or speed limits. Review
+and integrate them through the supported Moonraker/Klipper configuration after
+the installer-created backup.
 
 After checking the screen and controls, enable it at boot:
 
