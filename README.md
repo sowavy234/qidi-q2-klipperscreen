@@ -50,8 +50,11 @@ self-contained script, executed **on the printer itself**, that turns the stock
 - The control screen provides native jog, homing, extrusion, temperature, fan,
   lights, pause/resume/cancel, and motors-off actions when Moonraker exposes
   the corresponding objects.
-- Optional load, unload, purge, and tool-selection buttons are shown only when
-  matching Klipper macros are detected.
+- Optional load, unload, purge, and tool-selection controls are advertised in
+  the generated manifest only when matching Klipper macros are detected.
+  Upstream KlipperScreen does not provide arbitrary macro-button injection; a
+  companion integration must consume this manifest before rendering such
+  controls.
 - A proper splash covers the black gap while GTK wakes up.
 - The stock QIDI interface is kept intact.
 - Swipe up from the bottom edge to open KlipperScreen.

@@ -16,7 +16,7 @@ have not been checked.
 |---|---|---|
 | X/Y/Z jog and homing | `toolhead`, `gcode` | Use native movement panel and configured conservative steps |
 | Extrude/retract/purge | `extruder` plus a heated extruder | Native extrusion controls remain unavailable until Klipper reports the object |
-| Load/unload/material selection | matching `gcode_macro LOAD_FILAMENT`, `UNLOAD_FILAMENT`, or `SELECT_TOOL` | Macro buttons are optional; missing macros are hidden |
+| Load/unload/material selection | matching `gcode_macro LOAD_FILAMENT`, `UNLOAD_FILAMENT`, or `SELECT_TOOL` | The capability manifest advertises only detected macros; upstream KlipperScreen does not inject arbitrary macro buttons |
 | Pause/resume/cancel | `print_stats` | Native print controls are shown only when available |
 | Fan, bed, chamber, lights | corresponding Moonraker/Klipper objects | Missing objects are hidden rather than guessed |
 
