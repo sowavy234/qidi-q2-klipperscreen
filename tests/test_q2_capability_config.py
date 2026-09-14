@@ -36,3 +36,11 @@ class CapabilityConfigTests(unittest.TestCase):
             CAPABILITIES.write_atomic(str(target), "Q2_CAPABILITIES_VALID=1\n")
             self.assertEqual(target.read_text(), "Q2_CAPABILITIES_VALID=1\n")
             self.assertEqual(target.stat().st_mode & 0o777, 0o600)
+
+    def test_control_manifest_contains_only_detected_actions(self):
+        manifest = json.loads(CAPABILITIES.compile_controls({
+            "filament_macros": {"load": True, "purge": False}
+        }))
+        available = {item["action"] for item in manifest["controls"] if item["available"]}
+        self.assertEqual(available, {"load"})
+        self.assertTrue(manifest["fail_closed"])

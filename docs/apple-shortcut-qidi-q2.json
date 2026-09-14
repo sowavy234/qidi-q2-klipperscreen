@@ -1,6 +1,6 @@
 {
   "name": "QIDI Q2 Safe Controls",
-  "description": "Template for an iPhone Apple Shortcut using a Home Assistant or HTTPS webhook bridge.",
+  "description": "Template for an iPhone Apple Shortcut using the authenticated Siri/Home Assistant bridge.",
   "security": {
     "endpoint": "https://YOUR_HOME_ASSISTANT_OR_WEBHOOK_HOST/api/qidi-q2",
     "bearer_token": "REPLACE_WITH_A_SECRET_IN_SHORTCUT_STORAGE",
@@ -8,10 +8,11 @@
   },
   "actions": [
     {"label": "Pair printer", "method": "POST", "path": "/pair", "requires_printer_code": true, "confirmation_required": true},
-    {"label": "Status", "method": "GET", "path": "/status"},
+    {"label": "Status", "method": "GET", "path": "/status", "operation": "status", "read_only": true},
+    {"label": "Check", "method": "GET", "path": "/check", "operation": "check", "read_only": true},
     {"label": "Monitor while printing", "method": "GET", "path": "/monitor", "interval_minutes": 5, "stop_when": ["idle", "complete", "error", "offline"], "alert_on": ["spaghetti", "misprint", "paused", "thermal_failure", "offline"]},
-    {"label": "Request pause and alert", "method": "POST", "path": "/pause-alert", "requires_confirmation": true},
-    {"label": "Confirm safe macro", "method": "POST", "path": "/confirm", "requires_confirmation": true, "requires_printer_challenge": true}
+    {"label": "Request pause", "method": "POST", "path": "/pause", "operation": "pause", "requires_confirmation": true, "requires_printer_confirmation": true, "requires_printer_challenge": true},
+    {"label": "Request firmware restart", "method": "POST", "path": "/firmware-restart", "operation": "firmware_restart", "requires_confirmation": true, "requires_printer_confirmation": true, "requires_printer_challenge": true}
   ],
-  "notes": "The printer displays a one-time pairing code and a fresh short-lived challenge for sensitive actions. Codes are printer-bound, expire, are single-use where applicable, and are never logged. Shortcuts cannot provide a guaranteed endless background loop. Use the Home Assistant blueprint for continuous five-minute polling. This template contains no secrets and does not call a printer."
+  "notes": "Invoke this Shortcut only from explicit Siri/user intent. The bridge authenticates and binds every request to the paired printer. The printer displays a fresh short-lived challenge and confirmation for sensitive actions. Unauthorized or failed requests must be shown to the user and must not be retried as another operation. Shortcuts cannot provide a guaranteed endless background loop. Use the Home Assistant blueprint for continuous polling. This template contains no secrets and does not call a printer directly."
 }

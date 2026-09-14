@@ -13,6 +13,12 @@
 - Enforce Siri/Home Assistant request gating for all AI use and printer actions:
   AI cannot initiate operations, status/check requests remain read-only, and
   pause/restart require an exact authenticated request plus printer confirmation.
+- Generate a fail-closed, atomic control manifest alongside launcher capability
+  flags so optional filament controls are available only when their exact
+  Moonraker macros are detected.
+- Align the Apple Shortcut template with the authenticated `status`, `check`,
+  `pause`, and `firmware_restart` bridge operations; sensitive actions require
+  printer challenge and confirmation.
 
 This file records public installer releases. The format is inspired by
 [Keep a Changelog](https://keepachangelog.com/), minus the fiction that a home

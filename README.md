@@ -246,6 +246,23 @@ Before KlipperScreen starts, the launcher runs the probe and atomically writes
 enabled only for exact detected `LOAD_FILAMENT`, `UNLOAD_FILAMENT`,
 `PURGE_FILAMENT`, or `SELECT_TOOL` objects; probe errors and unknown values
 disable every optional gate.
+The same startup pass writes `/run/klipperscreen-q2/controls.json` and exports
+`Q2_CONTROLS_MANIFEST`. Integrations must render only entries whose
+`available` value is `true`; the manifest is private, atomic, schema-versioned,
+and empty on probe/compiler failure. This is a capability contract, not a
+claim that upstream KlipperScreen supports arbitrary custom buttons.
+
+For an existing installation, refresh the embedded helpers and restart the
+screen without changing the stock-UI selection:
+
+```sh
+scp install-klipperscreen-q2-on-printer.sh install-klipperscreen-q2-on-printer.sh.sha256 mks@PRINTER_IP:/home/qidi/
+ssh mks@PRINTER_IP 'cd /home/qidi && sha256sum -c install-klipperscreen-q2-on-printer.sh.sha256 && sudo bash install-klipperscreen-q2-on-printer.sh install --no-enable'
+```
+
+If the update is not usable, restore the previous installer/config backup
+before restarting KlipperScreen; never copy a hand-edited macro list into the
+manifest or execute a macro to test capability detection.
 
 ### Optional local AI watchdog
 

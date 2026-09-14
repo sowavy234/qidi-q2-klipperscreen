@@ -610,6 +610,7 @@ export XDG_RUNTIME_DIR="/run/klipperscreen-q2"
 export GDK_BACKEND="x11"
 export GTK_THEME="material-darker"
 CAPABILITIES="/run/klipperscreen-q2/capabilities.env"
+CONTROLS="/run/klipperscreen-q2/controls.json"
 PROBE="/home/qidi/q2-moonraker-features.py"
 PROBE_JSON="/run/klipperscreen-q2/capabilities.json"
 COMPILER="/home/qidi/q2-capability-config.py"
@@ -647,14 +648,14 @@ trap cleanup EXIT
 cd /home/qidi/KlipperScreen
 install -d -m 0700 "$XDG_RUNTIME_DIR"
 if ! /usr/bin/python3 "$PROBE" --json >"$PROBE_JSON"; then
-    printf 'Q2_CAPABILITIES_VALID=0\n' >"$CAPABILITIES"
+    /usr/bin/python3 "$COMPILER" /dev/null "$CAPABILITIES" "$CONTROLS" || true
 else
-    /usr/bin/python3 "$COMPILER" "$PROBE_JSON" "$CAPABILITIES" || \
-        printf 'Q2_CAPABILITIES_VALID=0\n' >"$CAPABILITIES"
+    /usr/bin/python3 "$COMPILER" "$PROBE_JSON" "$CAPABILITIES" "$CONTROLS" || true
 fi
 # The compiler emits only exact, detected macro gates. Unknown/error states
 # remain disabled and are not allowed to reach optional UI integrations.
 . "$CAPABILITIES"
+export Q2_CONTROLS_MANIFEST="$CONTROLS"
 rm -f /tmp/.X0-lock
 
 "$XVFB" "$DISPLAY" -screen 0 480x272x24 -nolisten tcp -noreset &
@@ -947,6 +948,11 @@ def detect(objects):
     import sys
     import tempfile
 
+    CONTROL_MACROS = {
+        "load": "LOAD_FILAMENT", "unload": "UNLOAD_FILAMENT",
+        "purge": "PURGE_FILAMENT", "select_tool": "SELECT_TOOL",
+    }
+
     def compile_config(payload):
         if not isinstance(payload, dict):
             raise ValueError("feature report must be an object")
@@ -962,11 +968,27 @@ def detect(objects):
             "",
         ])
 
+    def controls_config(payload):
+        if not isinstance(payload, dict):
+            raise ValueError("feature report must be an object")
+        macros = payload.get("filament_macros")
+        if not isinstance(macros, dict):
+            macros = {}
+        return json.dumps({
+            "schema": 1, "fail_closed": True, "controls": [
+                {"id": "filament-" + action, "action": action, "macro": macro,
+                 "available": macros.get(action) is True}
+                for action, macro in CONTROL_MACROS.items()
+            ],
+        }, sort_keys=True, separators=(",", ":")) + "\n"
+
     def main():
-        source, destination = sys.argv[1], sys.argv[2]
+        source, destination, controls_destination = sys.argv[1], sys.argv[2], sys.argv[3]
         try:
             with open(source, encoding="utf-8") as handle:
-                content = compile_config(json.load(handle))
+                payload = json.load(handle)
+                content = compile_config(payload)
+                controls = controls_config(payload)
             directory = os.path.dirname(destination)
             fd, temporary = tempfile.mkstemp(prefix=".q2-capabilities.", dir=directory, text=True)
             with os.fdopen(fd, "w", encoding="utf-8") as handle:
@@ -975,8 +997,34 @@ def detect(objects):
                 os.fsync(handle.fileno())
             os.chmod(temporary, 0o600)
             os.replace(temporary, destination)
+            directory = os.path.dirname(controls_destination)
+            fd, temporary = tempfile.mkstemp(prefix=".q2-controls.", dir=directory, text=True)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(controls)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.chmod(temporary, 0o600)
+            os.replace(temporary, controls_destination)
             return 0
         except (OSError, ValueError, json.JSONDecodeError) as error:
+            directory = os.path.dirname(destination)
+            os.makedirs(directory, mode=0o700, exist_ok=True)
+            fd, temporary = tempfile.mkstemp(prefix=".q2-capabilities.", dir=directory, text=True)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write("Q2_CAPABILITIES_VALID=0\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.chmod(temporary, 0o600)
+            os.replace(temporary, destination)
+            directory = os.path.dirname(controls_destination)
+            os.makedirs(directory, mode=0o700, exist_ok=True)
+            fd, temporary = tempfile.mkstemp(prefix=".q2-controls.", dir=directory, text=True)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write('{"schema":1,"fail_closed":true,"controls":[]}\n')
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.chmod(temporary, 0o600)
+            os.replace(temporary, controls_destination)
             print(f"capability compilation failed: {error}", file=sys.stderr)
             return 1
 
