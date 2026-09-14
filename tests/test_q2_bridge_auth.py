@@ -41,6 +41,7 @@ class AuthTests(unittest.TestCase):
         code = auth.begin_pairing()
         self.assertTrue(auth.pair("q2-abc", code))
         self.assertTrue(auth.authorize("q2-abc", "status"))
+        self.assertTrue(auth.authorize("q2-abc", "check"))
         self.assertFalse(auth.authorize("q2-abc", "unknown"))
         auth.revoke()
         self.assertFalse(auth.authorize("q2-abc", "status"))

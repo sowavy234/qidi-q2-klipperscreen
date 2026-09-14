@@ -14,5 +14,10 @@
     "enabled": false,
     "allow": [],
     "cooldown_seconds": 300
+  },
+  "authorization": {
+    "require_authenticated_siri_request": true,
+    "allow_direct_watchdog_actions": false,
+    "require_printer_confirmation_for_actions": true
   }
 }

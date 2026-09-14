@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Observe a printer with deterministic safety gates and optional Ollama advice."""
+"""Observe a printer with deterministic safety gates and request-gated AI advice."""
 from __future__ import annotations
 
 import argparse
@@ -14,6 +14,8 @@ from pathlib import Path
 
 
 ALLOWED_ACTIONS = {"none", "pause", "firmware_restart"}
+READ_ONLY_OPERATIONS = {"status", "check"}
+ACTION_OPERATIONS = {"pause", "firmware_restart"}
 SECRET_KEYS = re.compile(r"(token|secret|password|api[_-]?key|authorization)", re.I)
 
 
@@ -100,7 +102,32 @@ class Watchdog:
             return False
         return True
 
-    def act(self, action, evidence):
+    @staticmethod
+    def _valid_request(request, action=None):
+        if not isinstance(request, dict) or request.get("source") != "siri":
+            return False
+        if request.get("authenticated") is not True:
+            return False
+        operation = request.get("operation")
+        if operation not in READ_ONLY_OPERATIONS | ACTION_OPERATIONS:
+            return False
+        if action is None:
+            return True
+        if operation != action:
+            return False
+        return request.get("printer_confirmed") is True
+
+    def act(self, action, evidence, request=None):
+        authorization = self.config.get("authorization", {})
+        if (
+            authorization.get("require_authenticated_siri_request") is not True
+            or authorization.get("allow_direct_watchdog_actions") is not False
+            or authorization.get("require_printer_confirmation_for_actions") is not True
+            or not self._valid_request(request, action)
+        ):
+            audit(self.config["audit_log"], "action_blocked",
+                  {"action": action, "evidence": evidence, "reason": "missing_authenticated_siri_request"})
+            return False
         if not self.can_act(action):
             audit(self.config["audit_log"], "action_blocked", {"action": action, "evidence": evidence})
             return False
@@ -110,17 +137,42 @@ class Watchdog:
         audit(self.config["audit_log"], "action_executed", {"action": action, "evidence": evidence})
         return True
 
-    def cycle(self):
+    def cycle(self, request=None):
         status = self.moonraker_status()
         action, evidence = self.deterministic_thermal_action(status)
-        if action == "none" and self.config["ollama"].get("enabled", False):
-            action, evidence = self.model_action(status)
         if action != "none":
-            self.act(action, [evidence] if isinstance(evidence, str) else evidence)
+            audit(self.config["audit_log"], "safety_observation",
+                  {"action": action, "evidence": evidence,
+                   "reason": "watchdog_actions_require_siri_request"})
+            return
+        if request is None:
+            audit(self.config["audit_log"], "ai_blocked",
+                  {"reason": "no_authenticated_siri_request"})
+            return
+        authorization = self.config.get("authorization", {})
+        if (
+            authorization.get("require_authenticated_siri_request") is not True
+            or not self._valid_request(request)
+        ):
+            audit(self.config["audit_log"], "ai_blocked",
+                  {"reason": "invalid_authenticated_siri_request"})
+            return
+        if self.config["ollama"].get("enabled", False):
+            action, evidence = self.model_action(status, request)
+            if action != "none":
+                self.act(action, evidence, request)
 
-    def model_action(self, status):
+    def model_action(self, status, request):
+        authorization = self.config.get("authorization", {})
+        if (
+            authorization.get("require_authenticated_siri_request") is not True
+            or not self._valid_request(request)
+        ):
+            raise WatchdogError("AI consultation requires an authenticated Siri request")
         prompt = {"status": redact(status), "schema": {"action": "none|pause|firmware_restart",
-                 "confidence": "0..1", "evidence": ["string"]}}
+                 "confidence": "0..1", "evidence": ["string"]},
+                  "requested_operation": request["operation"],
+                  "instruction": "provide bounded advice; never choose an action other than the requested operation"}
         result = self.request(self.config["ollama"]["url"].rstrip("/") + "/api/generate",
                               {"model": self.config["ollama"]["model"], "prompt": json.dumps(prompt),
                                "stream": False, "format": "json"})
@@ -131,7 +183,17 @@ class Watchdog:
             audit(self.config["audit_log"], "model_rejected", {"error": str(error)})
             return "none", []
         threshold = float(self.config["ollama"]["confidence_threshold"])
-        return (action["action"], action["evidence"]) if action["confidence"] >= threshold else ("none", [])
+        if action["confidence"] < threshold:
+            return "none", []
+        if action["action"] != "none" and action["action"] != request["operation"]:
+            audit(self.config["audit_log"], "model_rejected",
+                  {"error": "model action does not match Siri operation"})
+            return "none", []
+        if request["operation"] in READ_ONLY_OPERATIONS and action["action"] != "none":
+            audit(self.config["audit_log"], "model_rejected",
+                  {"error": "read-only Siri operation cannot authorize printer action"})
+            return "none", []
+        return action["action"], action["evidence"]
 
 
 def main():

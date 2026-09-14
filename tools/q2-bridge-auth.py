@@ -10,7 +10,11 @@ import time
 from dataclasses import dataclass
 
 
-SENSITIVE_ACTIONS = {"motion", "heating", "purge", "smart_level", "pause", "cancel"}
+READ_ONLY_ACTIONS = {"status", "check"}
+SENSITIVE_ACTIONS = {
+    "motion", "heating", "purge", "smart_level", "pause", "cancel",
+    "firmware_restart",
+}
 
 
 @dataclass
@@ -79,7 +83,7 @@ class BridgeAuthorizer:
             return False
         if printer_id != self.printer_id:
             return False
-        if action != "status" and action not in SENSITIVE_ACTIONS:
+        if action not in READ_ONLY_ACTIONS and action not in SENSITIVE_ACTIONS:
             return False
         if action in SENSITIVE_ACTIONS:
             if (

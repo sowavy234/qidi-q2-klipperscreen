@@ -23,6 +23,11 @@ def config(path):
         "ollama": {"enabled": False, "url": "http://ollama", "model": "test",
                    "confidence_threshold": 0.9},
         "action_policy": {"enabled": True, "allow": ["pause"], "cooldown_seconds": 60},
+        "authorization": {
+            "require_authenticated_siri_request": True,
+            "allow_direct_watchdog_actions": False,
+            "require_printer_confirmation_for_actions": True,
+        },
     }
 
 
@@ -56,8 +61,28 @@ class WatchdogTests(unittest.TestCase):
             settings = config(path)
             watcher = WATCHDOG.Watchdog(settings, clock=lambda: now[0])
             watcher.request = lambda *args: {"result": {}}
-            self.assertTrue(watcher.act("pause", ["temperature"]))
+            request = {"source": "siri", "authenticated": True,
+                       "operation": "pause", "printer_confirmed": True}
+            self.assertFalse(watcher.act("pause", ["temperature"]))
+            self.assertTrue(watcher.act("pause", ["temperature"], request))
             self.assertFalse(watcher.act("pause", ["token=secret"]))
             records = [json.loads(line) for line in path.read_text().splitlines()]
-            self.assertEqual(len(records), 2)
+            self.assertEqual(len(records), 3)
             self.assertEqual(records[1]["details"]["action"], "pause")
+
+    def test_direct_watchdog_action_is_denied_without_siri_context(self):
+        with tempfile.TemporaryDirectory() as directory:
+            watcher = WATCHDOG.Watchdog(config(Path(directory) / "audit"))
+            watcher.request = lambda *args: {"result": {}}
+            self.assertFalse(watcher.act("pause", ["model"]))
+
+    def test_read_only_siri_request_cannot_authorize_action(self):
+        request = {"source": "siri", "authenticated": True,
+                   "operation": "status", "printer_confirmed": False}
+        self.assertFalse(WATCHDOG.Watchdog._valid_request(request, "pause"))
+
+    def test_model_consultation_requires_authenticated_siri_request(self):
+        with tempfile.TemporaryDirectory() as directory:
+            watcher = WATCHDOG.Watchdog(config(Path(directory) / "audit"))
+            with self.assertRaises(WATCHDOG.WatchdogError):
+                watcher.model_action({}, None)

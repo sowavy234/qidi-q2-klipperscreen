@@ -252,12 +252,18 @@ disable every optional gate.
 `tools/printer_ai_watchdog.py` is an observe-only-by-default service. Copy
 `config/printer-ai-watchdog.json` to `/etc/printer-ai-watchdog.json`, adjust
 the authenticated/local Moonraker endpoint as appropriate, and install
-`config/printer-ai-watchdog.service`. Keep `action_policy.enabled` false until
-offline validation and operator review are complete. Ollama output must be
-strict JSON and can only request `pause` or `firmware_restart`; free-form text
-is rejected. Thermal limits are checked deterministically before any model
-request. The service never executes arbitrary macros or shell commands, and
-the JSONL audit log is secret-redacted and fsync'd per record.
+`config/printer-ai-watchdog.service`. AI is never an initiator: no Claude,
+Ollama, or other model may start a printer operation. Ollama is consulted only
+after an authenticated Siri/Home Assistant bridge request explicitly names an
+operation (`status`, `check`, `pause`, or `firmware_restart`). Status/check are
+read-only. Pause/restart additionally require the printer-side confirmation and
+the request operation must exactly match the model action. Direct watchdog
+actions are denied even if `action_policy.enabled` is accidentally enabled.
+Thermal limits are checked deterministically for observation and audit only;
+they do not autonomously pause or restart the printer. Ollama output must be
+strict JSON and free-form text is rejected. The service never executes
+arbitrary macros or shell commands, and the JSONL audit log is secret-redacted
+and fsync'd per record.
 
 Enter the SSH password when prompted. A successful upload returns to the local
 prompt without drama, fireworks, or a certificate suitable for framing.

@@ -10,6 +10,9 @@
 - Add an opt-in, observe-only local Ollama/Moonraker watchdog with deterministic
   thermal guards, strict action validation, cooldowns, redacted audit logging,
   and a hardened systemd template.
+- Enforce Siri/Home Assistant request gating for all AI use and printer actions:
+  AI cannot initiate operations, status/check requests remain read-only, and
+  pause/restart require an exact authenticated request plus printer confirmation.
 
 This file records public installer releases. The format is inspired by
 [Keep a Changelog](https://keepachangelog.com/), minus the fiction that a home
