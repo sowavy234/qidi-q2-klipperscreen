@@ -609,6 +609,11 @@ export DISPLAY=":0"
 export XDG_RUNTIME_DIR="/run/klipperscreen-q2"
 export GDK_BACKEND="x11"
 export GTK_THEME="material-darker"
+CAPABILITIES="/run/klipperscreen-q2/capabilities.env"
+CONTROLS="/run/klipperscreen-q2/controls.json"
+PROBE="/home/qidi/q2-moonraker-features.py"
+PROBE_JSON="/run/klipperscreen-q2/capabilities.json"
+COMPILER="/home/qidi/q2-capability-config.py"
 
 XVFB="/usr/bin/Xvfb"
 BRIDGE="/usr/local/libexec/q2/q2-x11-fb-bridge"
@@ -642,6 +647,15 @@ trap cleanup EXIT
 
 cd /home/qidi/KlipperScreen
 install -d -m 0700 "$XDG_RUNTIME_DIR"
+if ! /usr/bin/python3 "$PROBE" --json >"$PROBE_JSON"; then
+    /usr/bin/python3 "$COMPILER" /dev/null "$CAPABILITIES" "$CONTROLS" || true
+else
+    /usr/bin/python3 "$COMPILER" "$PROBE_JSON" "$CAPABILITIES" "$CONTROLS" || true
+fi
+# The compiler emits only exact, detected macro gates. Unknown/error states
+# remain disabled and are not allowed to reach optional UI integrations.
+. "$CAPABILITIES"
+export Q2_CONTROLS_MANIFEST="$CONTROLS"
 rm -f /tmp/.X0-lock
 
 "$XVFB" "$DISPLAY" -screen 0 480x272x24 -nolisten tcp -noreset &
@@ -876,6 +890,173 @@ GESTURE_SERVICE
         /etc/default/klipperscreen-q2
     install -o qidi -g qidi -m 0644 "${work_dir}/KlipperScreen.conf" \
         "${QIDI_HOME}/printer_data/config/KlipperScreen.conf"
+    install_feature_probe
+    install_capability_compiler
+}
+
+install_feature_probe() {
+    install -d -m 0755 "${QIDI_HOME}"
+    cat >"${QIDI_HOME}/q2-moonraker-features.py" <<'FEATURE_PROBE'
+#!/usr/bin/env python3
+import argparse
+import json
+import sys
+import urllib.request
+
+def request(base_url, path):
+    with urllib.request.urlopen(f"{base_url.rstrip('/')}/{path}", timeout=2) as response:
+        payload = json.load(response)
+    if not isinstance(payload, dict):
+        raise ValueError("Moonraker returned a non-object response")
+    result = payload.get("result")
+    if not isinstance(result, dict):
+        raise ValueError("Moonraker returned no object result")
+    return result
+
+def detect(objects):
+    available = set(objects)
+    macros = sorted(name.removeprefix("gcode_macro ")
+                    for name in available if name.startswith("gcode_macro "))
+    return {
+        "motion": all(name in available for name in ("toolhead", "gcode")),
+        "homing": all(name in available for name in ("toolhead", "gcode")),
+        "extrusion": "extruder" in available,
+        "temperature": any(
+            name == "extruder" or
+            (name.startswith("extruder") and name[8:].isdigit())
+            for name in available
+        ),
+        "bed_temperature": "heater_bed" in available,
+        "fan": "fan" in available,
+        "print_controls": "print_stats" in available,
+        "filament_macros": {
+            action: macro in macros for action, macro in {
+                "load": "LOAD_FILAMENT",
+                "unload": "UNLOAD_FILAMENT",
+                "purge": "PURGE_FILAMENT",
+                "select_tool": "SELECT_TOOL",
+            }.items()
+        },
+        "gcode_macros": macros,
+    }
+
+    install_capability_compiler() {
+        cat <<'CAPABILITY_COMPILER' | sed 's/^    //' >"${QIDI_HOME}/q2-capability-config.py"
+    #!/usr/bin/env python3
+    import json
+    import os
+    import sys
+    import tempfile
+
+    CONTROL_MACROS = {
+        "load": "LOAD_FILAMENT", "unload": "UNLOAD_FILAMENT",
+        "purge": "PURGE_FILAMENT", "select_tool": "SELECT_TOOL",
+    }
+
+    def compile_config(payload):
+        if not isinstance(payload, dict):
+            raise ValueError("feature report must be an object")
+        macros = payload.get("filament_macros")
+        if not isinstance(macros, dict):
+            macros = {}
+        return "\n".join([
+            "Q2_CAPABILITIES_VALID=1",
+            f"Q2_FILAMENT_LOAD={int(macros.get('load') is True)}",
+            f"Q2_FILAMENT_UNLOAD={int(macros.get('unload') is True)}",
+            f"Q2_FILAMENT_PURGE={int(macros.get('purge') is True)}",
+            f"Q2_FILAMENT_SELECT_TOOL={int(macros.get('select_tool') is True)}",
+            "",
+        ])
+
+    def controls_config(payload):
+        if not isinstance(payload, dict):
+            raise ValueError("feature report must be an object")
+        macros = payload.get("filament_macros")
+        if not isinstance(macros, dict):
+            macros = {}
+        return json.dumps({
+            "schema": 1, "fail_closed": True, "controls": [
+                {"id": "filament-" + action, "action": action, "macro": macro,
+                 "available": macros.get(action) is True}
+                for action, macro in CONTROL_MACROS.items()
+            ],
+        }, sort_keys=True, separators=(",", ":")) + "\n"
+
+    def main():
+        source, destination, controls_destination = sys.argv[1], sys.argv[2], sys.argv[3]
+        try:
+            with open(source, encoding="utf-8") as handle:
+                payload = json.load(handle)
+                content = compile_config(payload)
+                controls = controls_config(payload)
+            directory = os.path.dirname(destination)
+            fd, temporary = tempfile.mkstemp(prefix=".q2-capabilities.", dir=directory, text=True)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(content)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.chmod(temporary, 0o600)
+            os.replace(temporary, destination)
+            directory = os.path.dirname(controls_destination)
+            fd, temporary = tempfile.mkstemp(prefix=".q2-controls.", dir=directory, text=True)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(controls)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.chmod(temporary, 0o600)
+            os.replace(temporary, controls_destination)
+            return 0
+        except (OSError, ValueError, json.JSONDecodeError) as error:
+            directory = os.path.dirname(destination)
+            os.makedirs(directory, mode=0o700, exist_ok=True)
+            fd, temporary = tempfile.mkstemp(prefix=".q2-capabilities.", dir=directory, text=True)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write("Q2_CAPABILITIES_VALID=0\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.chmod(temporary, 0o600)
+            os.replace(temporary, destination)
+            directory = os.path.dirname(controls_destination)
+            os.makedirs(directory, mode=0o700, exist_ok=True)
+            fd, temporary = tempfile.mkstemp(prefix=".q2-controls.", dir=directory, text=True)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write('{"schema":1,"fail_closed":true,"controls":[]}\n')
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.chmod(temporary, 0o600)
+            os.replace(temporary, controls_destination)
+            print(f"capability compilation failed: {error}", file=sys.stderr)
+            return 1
+
+    if __name__ == "__main__":
+        raise SystemExit(main())
+    CAPABILITY_COMPILER
+        chmod 0755 "${QIDI_HOME}/q2-capability-config.py"
+        chown qidi:qidi "${QIDI_HOME}/q2-capability-config.py"
+    }
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--url", default="http://127.0.0.1:7125")
+    parser.add_argument("--json", action="store_true", dest="as_json")
+    args = parser.parse_args()
+    try:
+        objects = request(args.url, "printer/objects/list").get("objects")
+        if not isinstance(objects, list) or not all(isinstance(item, str) for item in objects):
+            raise ValueError("Moonraker returned an invalid object list")
+        features = detect(objects)
+    except (OSError, ValueError) as error:
+        print(f"feature detection failed: {error}", file=sys.stderr)
+        return 1
+    print(json.dumps(features, sort_keys=True) if args.as_json else
+          "\n".join(f"{name}: {value}" for name, value in features.items()))
+    return 0
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+FEATURE_PROBE
+    chmod 0755 "${QIDI_HOME}/q2-moonraker-features.py"
+    chown qidi:qidi "${QIDI_HOME}/q2-moonraker-features.py"
 
     usermod -a -G video,input qidi
     systemctl daemon-reload

@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+- Package the read-only Moonraker feature probe in fresh installer installs;
+  missing optional helper modules now report unavailable camera support instead
+  of failing installation.
+- Compile probe results into a private, atomic launcher capability file before
+  starting KlipperScreen; optional filament macro gates fail closed on errors.
+- Add an opt-in, observe-only local Ollama/Moonraker watchdog with deterministic
+  thermal guards, strict action validation, cooldowns, redacted audit logging,
+  and a hardened systemd template.
+- Enforce Siri/Home Assistant request gating for all AI use and printer actions:
+  AI cannot initiate operations, status/check requests remain read-only, and
+  pause/restart require an exact authenticated request plus printer confirmation.
+- Generate a fail-closed, atomic control manifest alongside launcher capability
+  flags so optional filament controls are available only when their exact
+  Moonraker macros are detected.
+- Align the Apple Shortcut template with the authenticated `status`, `check`,
+  `pause`, and `firmware_restart` bridge operations; sensitive actions require
+  printer challenge and confirmation.
+
 This file records public installer releases. The format is inspired by
 [Keep a Changelog](https://keepachangelog.com/), minus the fiction that a home
 project emerges from the workshop with a perfect release process.
@@ -12,6 +32,44 @@ project emerges from the workshop with a perfect release process.
   the QIDI Q2 hardware.
 - Added a QIDI Q2 material-darker theme layer with larger touch targets and
   teal/orange status accents.
+
+## [2.0.0] — 2026-09-14
+
+### Added
+
+- Added a QIDI Q2 control release based on upstream KlipperScreen's native
+  motion, homing, extrusion, temperature, fan, lighting, and print-state
+  panels.
+- Added conservative jog/extrusion step presets for the 480×272 touch panel.
+- Added a read-only Moonraker feature probe that detects optional filament
+  macros and disables unsupported control groups instead of guessing.
+- Added compatibility, validation, setup, and rollback documentation for the
+  verified QIDI Q2 firmware image.
+
+### Changed
+
+- Added a dedicated filament-profile workflow with validated PLA, PETG, ABS,
+  ASA, and TPU nozzle/bed target mappings.
+- Added camera capability detection that requires both a video device and the
+  existing `libmpv` runtime before the Camera section is shown.
+- Added opt-in rear-chute smart-purge validation with configurable geometry,
+  soft-limit, homing, Z-clearance, rear-zone, and corner-collision guards.
+- Added dry-run helpers for timestamped non-overwriting configuration backups,
+  speed bounds, full bed-mesh health classification, guarded Smart Level, and
+  authenticated watcher alert payloads.
+- Added a placeholder-only iPhone Shortcut artifact for the Home Assistant or
+  HTTPS webhook bridge.
+- Added bounded five-minute monitoring actions, a Home Assistant continuous
+  automation blueprint, deduplicated problem alerts, and accessible live state
+  color/label classes for printer, mesh, and watcher status.
+- Locked the Siri/Home Assistant bridge behind printer-bound pairing codes,
+  expiring challenges, rate limiting, and second confirmation for
+  safety-critical actions.
+- Hardened bridge authorization to reject unknown actions and single-use
+  pairing-code replay.
+- Corrected Moonraker feature detection for homing, heated extruders, malformed
+  responses, and the documented `SELECT_TOOL` macro. The setup guide now
+  uploads the read-only probe and validates KlipperScreen before boot enablement.
 
 ## [1.3.2] — 2026-07-23
 

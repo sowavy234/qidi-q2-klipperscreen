@@ -1,0 +1,8 @@
+QIDI Q2 screen compatibility checklist
+
+[ ] 480x272 framebuffer is present at /dev/fb0
+[ ] Goodix Capacitive TouchScreen is present at /dev/input/event0
+[ ] Moonraker responds on http://127.0.0.1:7125
+[ ] Klipper reports the objects required by the desired controls
+[ ] No print is active while installing or changing the display UI
+[ ] Stock rollback command has been tested over SSH

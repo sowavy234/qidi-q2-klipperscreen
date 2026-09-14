@@ -1,0 +1,23 @@
+{
+  "moonraker_url": "http://127.0.0.1:7125",
+  "poll_seconds": 10,
+  "audit_log": "/var/lib/printer-ai-watchdog/audit.jsonl",
+  "timeouts": {"http": 3},
+  "thermal_limits": {"extruder": 310, "heater_bed": 125},
+  "ollama": {
+    "enabled": false,
+    "url": "http://127.0.0.1:11434",
+    "model": "llama3.2:3b",
+    "confidence_threshold": 0.9
+  },
+  "action_policy": {
+    "enabled": false,
+    "allow": [],
+    "cooldown_seconds": 300
+  },
+  "authorization": {
+    "require_authenticated_siri_request": true,
+    "allow_direct_watchdog_actions": false,
+    "require_printer_confirmation_for_actions": true
+  }
+}

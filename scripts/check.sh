@@ -61,6 +61,9 @@ assert_hash() {
 
 printf '%s\n' "Checking shell syntax."
 bash -n "$installer"
+grep -q 'q2-moonraker-features.py' "$installer"
+grep -q 'FEATURE_PROBE' "$installer"
+grep -q 'q2-capability-config.py' "$installer"
 for script in \
     "${repo_dir}/bin/q2-display-mode" \
     "${repo_dir}/bin/start-klipperscreen-q2" \
@@ -68,6 +71,7 @@ for script in \
     "${repo_dir}/tools/touch-calibration-test.sh"; do
     bash -n "$script"
 done
+python3 -m py_compile "${repo_dir}/tools/q2-capability-config.py"
 
 printf '%s\n' "Checking installer checksum."
 check_checksum_file

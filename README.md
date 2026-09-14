@@ -47,6 +47,14 @@ self-contained script, executed **on the printer itself**, that turns the stock
 - The camera panel works through the installed `libmpv` runtime.
 - Wi-Fi can be configured from KlipperScreen's Network panel using the Q2's
   existing NetworkManager-backed wireless adapter.
+- The control screen provides native jog, homing, extrusion, temperature, fan,
+  lights, pause/resume/cancel, and motors-off actions when Moonraker exposes
+  the corresponding objects.
+- Optional load, unload, purge, and tool-selection controls are advertised in
+  the generated manifest only when matching Klipper macros are detected.
+  Upstream KlipperScreen does not provide arbitrary macro-button injection; a
+  companion integration must consume this manifest before rendering such
+  controls.
 - A proper splash covers the black gap while GTK wakes up.
 - The stock QIDI interface is kept intact.
 - Swipe up from the bottom edge to open KlipperScreen.
@@ -232,6 +240,51 @@ scp \
   mks@PRINTER_IP:/home/qidi/
 ```
 
+The installer embeds the read-only Moonraker feature probe for fresh installs.
+The helper scripts are uploaded separately only when using the existing-install
+update flow below.
+
+Before KlipperScreen starts, the launcher runs the probe and atomically writes
+`/run/klipperscreen-q2/capabilities.env`. Optional filament macro gates are
+enabled only for exact detected `LOAD_FILAMENT`, `UNLOAD_FILAMENT`,
+`PURGE_FILAMENT`, or `SELECT_TOOL` objects; probe errors and unknown values
+disable every optional gate.
+The same startup pass writes `/run/klipperscreen-q2/controls.json` and exports
+`Q2_CONTROLS_MANIFEST`. Integrations must render only entries whose
+`available` value is `true`; the manifest is private, atomic, schema-versioned,
+and empty on probe/compiler failure. This is a capability contract, not a
+claim that upstream KlipperScreen supports arbitrary custom buttons.
+
+For an existing installation, refresh the embedded helpers and restart the
+screen without changing the stock-UI selection:
+
+```sh
+scp install-klipperscreen-q2-on-printer.sh install-klipperscreen-q2-on-printer.sh.sha256 mks@PRINTER_IP:/home/qidi/
+ssh mks@PRINTER_IP 'cd /home/qidi && sha256sum -c install-klipperscreen-q2-on-printer.sh.sha256 && sudo bash install-klipperscreen-q2-on-printer.sh install --no-enable'
+```
+
+If the update is not usable, restore the previous installer/config backup
+before restarting KlipperScreen; never copy a hand-edited macro list into the
+manifest or execute a macro to test capability detection.
+
+### Optional local AI watchdog
+
+`tools/printer_ai_watchdog.py` is an observe-only-by-default service. Copy
+`config/printer-ai-watchdog.json` to `/etc/printer-ai-watchdog.json`, adjust
+the authenticated/local Moonraker endpoint as appropriate, and install
+`config/printer-ai-watchdog.service`. AI is never an initiator: no Claude,
+Ollama, or other model may start a printer operation. Ollama is consulted only
+after an authenticated Siri/Home Assistant bridge request explicitly names an
+operation (`status`, `check`, `pause`, or `firmware_restart`). Status/check are
+read-only. Pause/restart additionally require the printer-side confirmation and
+the request operation must exactly match the model action. Direct watchdog
+actions are denied even if `action_policy.enabled` is accidentally enabled.
+Thermal limits are checked deterministically for observation and audit only;
+they do not autonomously pause or restart the printer. Ollama output must be
+strict JSON and free-form text is rejected. The service never executes
+arbitrary macros or shell commands, and the JSONL audit log is secret-redacted
+and fsync'd per record.
+
 Enter the SSH password when prompted. A successful upload returns to the local
 prompt without drama, fireworks, or a certificate suitable for framing.
 
@@ -341,6 +394,194 @@ Installation and display recovery problems live in
 | `sudo q2-display-mode enable-klipperscreen` | Boot into KlipperScreen |
 | `sudo q2-display-mode enable-qidi` | Boot into the stock UI |
 | `sudo q2-display-mode status` | Show the active and boot UIs |
+
+## Control and filament safety
+
+The **Move**, **Extrude**, **Temperature**, **Fan**, **Print**, and **Machine**
+panels are upstream KlipperScreen controls. The configured Q2 presets are
+`0.1, 1, 10, 50 mm` for movement and `5, 10, 25, 50 mm` for extrusion; change
+them only after validating the machine's limits. Never jog or extrude while a
+person, tool, or loose filament is in the motion path.
+
+Before using optional load/unload/purge/material buttons, check the read-only
+feature report:
+
+```sh
+python3 /home/qidi/q2-moonraker-features.py --json
+```
+
+The probe only reads Moonraker's object list. It does not issue G-code. Missing
+objects or macros are treated as unsupported. The probe is a report and safety
+check; it does not rewrite KlipperScreen configuration or invent macro buttons.
+Upstream KlipperScreen panels gate their native controls from live Moonraker
+objects. Optional QIDI macros must remain explicitly configured and confirmed
+by the operator.
+
+### Filament
+
+The dedicated **Filament** workflow uses known material profiles rather than
+accepting arbitrary temperatures. Select a profile to review its nozzle and bed
+targets before applying them through the normal KlipperScreen temperature
+controls:
+
+| Profile | Nozzle | Bed |
+|---|---:|---:|
+| PLA | 220 °C | 60 °C |
+| PETG | 245 °C | 80 °C |
+| ABS / ASA | 260 °C | 100 °C |
+| TPU | 230 °C | 50 °C |
+| PA6-GF / PA6-CF | 270 °C | 90 °C |
+| PAHT | 280 °C | 100 °C |
+
+PA6-GF, PA6-CF, and PAHT require a hardened hotend, enclosure, and dried
+filament. These are conservative targets for review, not automatic hardware or
+slicer changes.
+
+The mapping is available without a printer connection:
+
+```sh
+python3 /home/qidi/q2-filament.py --profile petg
+```
+
+Load, unload, purge, and tool-selection buttons remain conditional on detected
+Klipper macros. The profile helper never emits G-code and unknown materials are
+rejected.
+
+### Smart purge and collision protection
+
+The rear-waste-chute **Smart Purge** button is disabled until measured chute
+geometry is configured in `config/q2-feature-hooks.conf`. There are no fixed Q2
+coordinates in this repository.
+
+### Advanced operations: backup, speed, mesh, and watcher
+
+Before applying any local macro/configuration change, make a timestamped,
+non-overwriting archive of `printer_data`; retain at least the five newest
+archives. Restore only after stopping KlipperScreen and reviewing the archive:
+
+```sh
+sudo tar -czf "/home/qidi/q2-backups/qidi-q2-config-$(date -u +%Y%m%dT%H%M%SZ).tar.gz" \
+  -C /home/qidi printer_data
+sudo q2-display-mode enable-qidi
+# Extract a reviewed archive to a staging directory before restoring files.
+```
+
+The speed controls in `config/q2-advanced-operations.conf` are limits only;
+the UI must use supported Klipper/Moonraker native settings and reject values
+outside those limits. The Bed Mesh tile is `good`, `bad`, or `unknown` based
+on the complete reported matrix, tolerance, and freshness; missing or stale
+data never triggers leveling. Smart Level requires detected `Z_TILT_ADJUST`
+and `BED_MESH_CALIBRATE`, a toolhead object, and explicit confirmation.
+
+The optional camera watcher integration has no bundled AI model. When a local
+watcher is configured, it may request the authenticated Moonraker `PAUSE`
+macro and send an authenticated HTTPS Home Assistant/webhook alert. Otherwise
+the watcher remains unavailable. `docs/apple-shortcut-qidi-q2.json` is an
+iPhone Shortcut template for status, pause/alert, and confirmed macro actions.
+
+### Locked Siri/Home Assistant bridge
+
+Remote Siri or Shortcut commands are locked until the phone pairs with the
+printer-specific identity. KlipperScreen shows `Locked / unpaired`,
+`Pending confirmation`, `Paired`, or `Challenge pending`; the printer displays
+the short-lived pairing code during pairing and a fresh challenge for each
+sensitive action. Pairing codes expire, are printer-bound, rate-limited after
+five failures, and never logged or committed. Status is read-only and requires
+pairing. Motion, heating, purge, Smart Level, pause, and cancel require a
+second explicit confirmation on the printer UI; stale, replayed, or
+mismatched-printer requests are rejected. Revoke pairing from the printer
+before changing phones or webhook credentials.
+
+The Shortcut artifact uses placeholders only. Store the bearer token in the
+phone/Home Assistant secret store, not in this repository. The bridge must
+authenticate to Moonraker and must not expose an unauthenticated webhook.
+Replace placeholders in the phone only and never commit a token.
+
+### Monitoring and live state
+
+The Shortcut template describes one bounded five-minute check while the printer
+is printing. iOS may suspend or stop repeated Shortcut execution, so it is not
+an endless monitoring loop. For continuous monitoring, import
+`docs/home-assistant-qidi-q2-monitor.yaml`, configure an authenticated
+`rest_command`, and use `input_boolean.qidi_q2_monitoring` as the stop switch.
+The automation stops when the state is idle, complete, error, or offline.
+Alerts are deduplicated and limited to watcher misprint/spaghetti findings,
+pause, thermal/failure states, or an offline printer.
+
+The live state tile uses existing Moonraker polling/events for state, target and
+actual temperatures, progress, complete mesh health, and camera/watcher
+availability. Idle, heating, printing, paused, completed, error, and offline
+states include a label/icon as well as a high-contrast color. Missing or stale
+mesh and unavailable camera/watcher data are explicitly shown as Unknown or
+Unavailable. The validation path requires a homed printer,
+enabled soft limits, configured rear-zone and corner margins, and a safe Z
+clearance before it can produce a `PURGE_FILAMENT` command. Confirmation is
+required for the final motion/heating action; dry-run validation never emits
+G-code. Leave the feature disabled when the chute position or printer limits
+are unknown. The same guards apply to rear parking, screw-tilt, bed-mesh, and
+KAMP purge hooks.
+
+### Camera
+
+The **Camera** section continues to use KlipperScreen's existing `libmpv`
+path. It is available only when both a `/dev/video*` device and the installed
+`libmpv` runtime are present; otherwise the section should stay hidden:
+
+```sh
+python3 /home/qidi/q2-moonraker-features.py --json
+```
+
+No camera device is assumed, and no camera stream is opened by the probe.
+
+## Updating an existing installation
+
+Run these commands from a computer with SSH access. They are idempotent and
+leave the stock UI available:
+
+```sh
+git clone https://github.com/sowavy234/qidi-q2-klipperscreen.git
+cd qidi-q2-klipperscreen
+scp install-klipperscreen-q2-on-printer.sh \
+    install-klipperscreen-q2-on-printer.sh.sha256 \
+    tools/q2-moonraker-features.py \
+    tools/q2-filament.py \
+    tools/q2-safety.py \
+    tools/q2-operations.py \
+    tools/q2-monitor.py \
+    tools/q2-bridge-auth.py \
+    config/q2-feature-hooks.conf \
+    config/q2-advanced-operations.conf \
+mks@PRINTER_IP:/home/qidi/
+ssh mks@PRINTER_IP \
+  'cd /home/qidi && sha256sum -c install-klipperscreen-q2-on-printer.sh.sha256'
+ssh mks@PRINTER_IP \
+  'sudo bash /home/qidi/install-klipperscreen-q2-on-printer.sh install --no-enable'
+ssh mks@PRINTER_IP 'sudo q2-display-mode klipperscreen'
+ssh mks@PRINTER_IP 'sudo q2-display-mode status'
+```
+
+The optional helper/config files are read-only probes and templates; the
+installer does not silently apply their macro names or speed limits. Review
+and integrate them through the supported Moonraker/Klipper configuration after
+the installer-created backup.
+
+This temporarily selects KlipperScreen so the new screen and controls can be
+checked while the stock QIDI UI remains the rollback choice at boot. After
+checking the screen and controls, enable it at boot:
+
+```sh
+ssh mks@PRINTER_IP \
+  'sudo bash /home/qidi/install-klipperscreen-q2-on-printer.sh klipperscreen'
+```
+
+If anything is wrong, roll back immediately:
+
+```sh
+ssh mks@PRINTER_IP 'sudo q2-display-mode enable-qidi'
+```
+
+The installer also restores the stock UI after a failed display startup.
+`COMPATIBILITY_REPORT.md` documents the verified firmware and object matrix.
 
 Gestures run in a separate service and do not depend on whichever UI happens to
 be visible. A casual short swipe does not count: the stroke must begin at an
