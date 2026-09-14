@@ -5,6 +5,8 @@
 - Package the read-only Moonraker feature probe in fresh installer installs;
   missing optional helper modules now report unavailable camera support instead
   of failing installation.
+- Compile probe results into a private, atomic launcher capability file before
+  starting KlipperScreen; optional filament macro gates fail closed on errors.
 
 This file records public installer releases. The format is inspired by
 [Keep a Changelog](https://keepachangelog.com/), minus the fiction that a home

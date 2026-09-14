@@ -241,6 +241,12 @@ The installer embeds the read-only Moonraker feature probe for fresh installs.
 The helper scripts are uploaded separately only when using the existing-install
 update flow below.
 
+Before KlipperScreen starts, the launcher runs the probe and atomically writes
+`/run/klipperscreen-q2/capabilities.env`. Optional filament macro gates are
+enabled only for exact detected `LOAD_FILAMENT`, `UNLOAD_FILAMENT`,
+`PURGE_FILAMENT`, or `SELECT_TOOL` objects; probe errors and unknown values
+disable every optional gate.
+
 Enter the SSH password when prompted. A successful upload returns to the local
 prompt without drama, fireworks, or a certificate suitable for framing.
 

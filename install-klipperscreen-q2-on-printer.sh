@@ -609,6 +609,10 @@ export DISPLAY=":0"
 export XDG_RUNTIME_DIR="/run/klipperscreen-q2"
 export GDK_BACKEND="x11"
 export GTK_THEME="material-darker"
+CAPABILITIES="/run/klipperscreen-q2/capabilities.env"
+PROBE="/home/qidi/q2-moonraker-features.py"
+PROBE_JSON="/run/klipperscreen-q2/capabilities.json"
+COMPILER="/home/qidi/q2-capability-config.py"
 
 XVFB="/usr/bin/Xvfb"
 BRIDGE="/usr/local/libexec/q2/q2-x11-fb-bridge"
@@ -642,6 +646,15 @@ trap cleanup EXIT
 
 cd /home/qidi/KlipperScreen
 install -d -m 0700 "$XDG_RUNTIME_DIR"
+if ! /usr/bin/python3 "$PROBE" --json >"$PROBE_JSON"; then
+    printf 'Q2_CAPABILITIES_VALID=0\n' >"$CAPABILITIES"
+else
+    /usr/bin/python3 "$COMPILER" "$PROBE_JSON" "$CAPABILITIES" || \
+        printf 'Q2_CAPABILITIES_VALID=0\n' >"$CAPABILITIES"
+fi
+# The compiler emits only exact, detected macro gates. Unknown/error states
+# remain disabled and are not allowed to reach optional UI integrations.
+. "$CAPABILITIES"
 rm -f /tmp/.X0-lock
 
 "$XVFB" "$DISPLAY" -screen 0 480x272x24 -nolisten tcp -noreset &
@@ -877,6 +890,7 @@ GESTURE_SERVICE
     install -o qidi -g qidi -m 0644 "${work_dir}/KlipperScreen.conf" \
         "${QIDI_HOME}/printer_data/config/KlipperScreen.conf"
     install_feature_probe
+    install_capability_compiler
 }
 
 install_feature_probe() {
@@ -923,6 +937,54 @@ def detect(objects):
             }.items()
         },
         "gcode_macros": macros,
+    }
+
+    install_capability_compiler() {
+        cat <<'CAPABILITY_COMPILER' | sed 's/^    //' >"${QIDI_HOME}/q2-capability-config.py"
+    #!/usr/bin/env python3
+    import json
+    import os
+    import sys
+    import tempfile
+
+    def compile_config(payload):
+        if not isinstance(payload, dict):
+            raise ValueError("feature report must be an object")
+        macros = payload.get("filament_macros")
+        if not isinstance(macros, dict):
+            macros = {}
+        return "\n".join([
+            "Q2_CAPABILITIES_VALID=1",
+            f"Q2_FILAMENT_LOAD={int(macros.get('load') is True)}",
+            f"Q2_FILAMENT_UNLOAD={int(macros.get('unload') is True)}",
+            f"Q2_FILAMENT_PURGE={int(macros.get('purge') is True)}",
+            f"Q2_FILAMENT_SELECT_TOOL={int(macros.get('select_tool') is True)}",
+            "",
+        ])
+
+    def main():
+        source, destination = sys.argv[1], sys.argv[2]
+        try:
+            with open(source, encoding="utf-8") as handle:
+                content = compile_config(json.load(handle))
+            directory = os.path.dirname(destination)
+            fd, temporary = tempfile.mkstemp(prefix=".q2-capabilities.", dir=directory, text=True)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(content)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.chmod(temporary, 0o600)
+            os.replace(temporary, destination)
+            return 0
+        except (OSError, ValueError, json.JSONDecodeError) as error:
+            print(f"capability compilation failed: {error}", file=sys.stderr)
+            return 1
+
+    if __name__ == "__main__":
+        raise SystemExit(main())
+    CAPABILITY_COMPILER
+        chmod 0755 "${QIDI_HOME}/q2-capability-config.py"
+        chown qidi:qidi "${QIDI_HOME}/q2-capability-config.py"
     }
 
 def main():
