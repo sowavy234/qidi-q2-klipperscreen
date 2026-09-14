@@ -47,6 +47,11 @@ self-contained script, executed **on the printer itself**, that turns the stock
 - The camera panel works through the installed `libmpv` runtime.
 - Wi-Fi can be configured from KlipperScreen's Network panel using the Q2's
   existing NetworkManager-backed wireless adapter.
+- The control screen provides native jog, homing, extrusion, temperature, fan,
+  lights, pause/resume/cancel, and motors-off actions when Moonraker exposes
+  the corresponding objects.
+- Optional load, unload, purge, and tool-selection buttons are shown only when
+  matching Klipper macros are detected.
 - A proper splash covers the black gap while GTK wakes up.
 - The stock QIDI interface is kept intact.
 - Swipe up from the bottom edge to open KlipperScreen.
@@ -341,6 +346,59 @@ Installation and display recovery problems live in
 | `sudo q2-display-mode enable-klipperscreen` | Boot into KlipperScreen |
 | `sudo q2-display-mode enable-qidi` | Boot into the stock UI |
 | `sudo q2-display-mode status` | Show the active and boot UIs |
+
+## Control and filament safety
+
+The **Move**, **Extrude**, **Temperature**, **Fan**, **Print**, and **Machine**
+panels are upstream KlipperScreen controls. The configured Q2 presets are
+`0.1, 1, 10, 50 mm` for movement and `5, 10, 25, 50 mm` for extrusion; change
+them only after validating the machine's limits. Never jog or extrude while a
+person, tool, or loose filament is in the motion path.
+
+Before using optional load/unload/purge/material buttons, check the read-only
+feature report:
+
+```sh
+python3 /home/qidi/q2-moonraker-features.py --json
+```
+
+The probe only reads Moonraker's object list. It does not issue G-code. Missing
+objects or macros are treated as unsupported and should remain hidden.
+
+## Updating an existing installation
+
+Run these commands from a computer with SSH access. They are idempotent and
+leave the stock UI available:
+
+```sh
+git clone https://github.com/sowavy234/qidi-q2-klipperscreen.git
+cd qidi-q2-klipperscreen
+scp install-klipperscreen-q2-on-printer.sh \
+    install-klipperscreen-q2-on-printer.sh.sha256 \
+    tools/q2-moonraker-features.py \
+    mks@PRINTER_IP:/home/qidi/
+ssh mks@PRINTER_IP \
+  'cd /home/qidi && sha256sum -c install-klipperscreen-q2-on-printer.sh.sha256'
+ssh mks@PRINTER_IP \
+  'sudo bash /home/qidi/install-klipperscreen-q2-on-printer.sh install --no-enable'
+ssh mks@PRINTER_IP 'sudo q2-display-mode status'
+```
+
+After checking the screen and controls, enable it at boot:
+
+```sh
+ssh mks@PRINTER_IP \
+  'sudo bash /home/qidi/install-klipperscreen-q2-on-printer.sh klipperscreen'
+```
+
+If anything is wrong, roll back immediately:
+
+```sh
+ssh mks@PRINTER_IP 'sudo q2-display-mode enable-qidi'
+```
+
+The installer also restores the stock UI after a failed display startup.
+`COMPATIBILITY_REPORT.md` documents the verified firmware and object matrix.
 
 Gestures run in a separate service and do not depend on whichever UI happens to
 be visible. A casual short swipe does not count: the stroke must begin at an

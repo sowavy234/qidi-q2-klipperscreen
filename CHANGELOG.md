@@ -13,6 +13,19 @@ project emerges from the workshop with a perfect release process.
 - Added a QIDI Q2 material-darker theme layer with larger touch targets and
   teal/orange status accents.
 
+## [2.0.0] — 2026-09-14
+
+### Added
+
+- Added a QIDI Q2 control release based on upstream KlipperScreen's native
+  motion, homing, extrusion, temperature, fan, lighting, and print-state
+  panels.
+- Added conservative jog/extrusion step presets for the 480×272 touch panel.
+- Added a read-only Moonraker feature probe that detects optional filament
+  macros and disables unsupported control groups instead of guessing.
+- Added compatibility, validation, setup, and rollback documentation for the
+  verified QIDI Q2 firmware image.
+
 ## [1.3.2] — 2026-07-23
 
 ### Changed
