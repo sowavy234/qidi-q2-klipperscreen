@@ -23,6 +23,14 @@ have not been checked.
 Run `python3 tools/q2-moonraker-features.py --json` on the printer to record
 the actual object set before enabling optional macros.
 
+Advanced hooks are templates only: rear-chute purge, KAMP purge, Smart Park,
+triple-Z/screw tilt, bed mesh, fan, and watcher/webhook actions require local
+configuration and explicit confirmation. No chute coordinates are assumed.
+Smart Purge additionally requires measured soft limits, a homed state, safe Z
+clearance, a rear-zone check, and corner margins. PA6-GF, PA6-CF, and PAHT
+profiles are conservative informational targets and require a hardened
+hotend, enclosure, and dried filament.
+
 ## Known differences
 
 Moonraker object names and Klipper macro names are configuration-dependent.

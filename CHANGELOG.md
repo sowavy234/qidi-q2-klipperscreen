@@ -32,6 +32,8 @@ project emerges from the workshop with a perfect release process.
   ASA, and TPU nozzle/bed target mappings.
 - Added camera capability detection that requires both a video device and the
   existing `libmpv` runtime before the Camera section is shown.
+- Added opt-in rear-chute smart-purge validation with configurable geometry,
+  soft-limit, homing, Z-clearance, rear-zone, and corner-collision guards.
 
 ## [1.3.2] — 2026-07-23
 

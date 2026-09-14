@@ -14,6 +14,13 @@ import importlib.util
 from pathlib import Path
 
 
+def advanced_capability(macros: list[str]) -> dict[str, bool]:
+    return {macro.lower(): macro in macros for macro in (
+        "KAMP_PURGE", "SMART_PARK", "Z_TILT_ADJUST", "SCREWS_TILT_CALCULATE",
+        "BED_MESH_CALIBRATE", "SET_FAN_SPEED",
+    )}
+
+
 def camera_capability() -> dict[str, object]:
     module_path = Path(__file__).with_name("q2-filament.py")
     spec = importlib.util.spec_from_file_location("q2_filament", module_path)
@@ -61,6 +68,7 @@ def detect(objects: list[str]) -> dict[str, Any]:
             for action in ("load", "unload", "purge", "select_tool")
         },
         "gcode_macros": macros,
+        "advanced_macros": advanced_capability(macros),
     }
     features["camera"] = camera_capability()
     return features

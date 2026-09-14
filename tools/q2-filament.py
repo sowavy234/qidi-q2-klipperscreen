@@ -15,6 +15,7 @@ class FilamentProfile:
     name: str
     nozzle_target: int
     bed_target: int
+    requirements: str = "standard hotend"
 
 
 PROFILES = {
@@ -23,6 +24,9 @@ PROFILES = {
     "pla": FilamentProfile("PLA", 220, 60),
     "petg": FilamentProfile("PETG", 245, 80),
     "tpu": FilamentProfile("TPU", 230, 50),
+    "pa6-gf": FilamentProfile("PA6-GF", 270, 90, "hardened hotend, enclosure, and dryer"),
+    "pa6-cf": FilamentProfile("PA6-CF", 270, 90, "hardened hotend, enclosure, and dryer"),
+    "paht": FilamentProfile("PAHT", 280, 100, "hardened hotend, enclosure, and dryer"),
 }
 
 

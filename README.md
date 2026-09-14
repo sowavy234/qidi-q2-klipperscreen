@@ -378,6 +378,12 @@ controls:
 | PETG | 245 °C | 80 °C |
 | ABS / ASA | 260 °C | 100 °C |
 | TPU | 230 °C | 50 °C |
+| PA6-GF / PA6-CF | 270 °C | 90 °C |
+| PAHT | 280 °C | 100 °C |
+
+PA6-GF, PA6-CF, and PAHT require a hardened hotend, enclosure, and dried
+filament. These are conservative targets for review, not automatic hardware or
+slicer changes.
 
 The mapping is available without a printer connection:
 
@@ -388,6 +394,18 @@ python3 /home/qidi/q2-filament.py --profile petg
 Load, unload, purge, and tool-selection buttons remain conditional on detected
 Klipper macros. The profile helper never emits G-code and unknown materials are
 rejected.
+
+### Smart purge and collision protection
+
+The rear-waste-chute **Smart Purge** button is disabled until measured chute
+geometry is configured in `config/q2-feature-hooks.conf`. There are no fixed Q2
+coordinates in this repository. The validation path requires a homed printer,
+enabled soft limits, configured rear-zone and corner margins, and a safe Z
+clearance before it can produce a `PURGE_FILAMENT` command. Confirmation is
+required for the final motion/heating action; dry-run validation never emits
+G-code. Leave the feature disabled when the chute position or printer limits
+are unknown. The same guards apply to rear parking, screw-tilt, bed-mesh, and
+KAMP purge hooks.
 
 ### Camera
 
@@ -413,6 +431,8 @@ scp install-klipperscreen-q2-on-printer.sh \
     install-klipperscreen-q2-on-printer.sh.sha256 \
     tools/q2-moonraker-features.py \
 tools/q2-filament.py \
+tools/q2-safety.py \
+config/q2-feature-hooks.conf \
 mks@PRINTER_IP:/home/qidi/
 ssh mks@PRINTER_IP \
   'cd /home/qidi && sha256sum -c install-klipperscreen-q2-on-printer.sh.sha256'
