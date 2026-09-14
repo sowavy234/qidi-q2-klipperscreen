@@ -234,6 +234,9 @@ Change to the repository directory and run:
 scp \
   install-klipperscreen-q2-on-printer.sh \
   install-klipperscreen-q2-on-printer.sh.sha256 \
+  tools/q2-moonraker-features.py \
+  tools/q2-filament.py \
+  tools/q2-safety.py \
   mks@PRINTER_IP:/home/qidi/
 ```
 
@@ -363,7 +366,11 @@ python3 /home/qidi/q2-moonraker-features.py --json
 ```
 
 The probe only reads Moonraker's object list. It does not issue G-code. Missing
-objects or macros are treated as unsupported and should remain hidden.
+objects or macros are treated as unsupported. The probe is a report and safety
+check; it does not rewrite KlipperScreen configuration or invent macro buttons.
+Upstream KlipperScreen panels gate their native controls from live Moonraker
+objects. Optional QIDI macros must remain explicitly configured and confirmed
+by the operator.
 
 ### Filament
 
@@ -504,6 +511,7 @@ ssh mks@PRINTER_IP \
   'cd /home/qidi && sha256sum -c install-klipperscreen-q2-on-printer.sh.sha256'
 ssh mks@PRINTER_IP \
   'sudo bash /home/qidi/install-klipperscreen-q2-on-printer.sh install --no-enable'
+ssh mks@PRINTER_IP 'sudo q2-display-mode klipperscreen'
 ssh mks@PRINTER_IP 'sudo q2-display-mode status'
 ```
 
@@ -512,7 +520,9 @@ installer does not silently apply their macro names or speed limits. Review
 and integrate them through the supported Moonraker/Klipper configuration after
 the installer-created backup.
 
-After checking the screen and controls, enable it at boot:
+This temporarily selects KlipperScreen so the new screen and controls can be
+checked while the stock QIDI UI remains the rollback choice at boot. After
+checking the screen and controls, enable it at boot:
 
 ```sh
 ssh mks@PRINTER_IP \

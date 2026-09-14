@@ -38,6 +38,8 @@ def camera_capability() -> dict[str, object]:
 def request(base_url: str, path: str) -> dict[str, Any]:
     with urllib.request.urlopen(f"{base_url.rstrip('/')}/{path}", timeout=2) as response:
         payload = json.load(response)
+    if not isinstance(payload, dict):
+        raise ValueError(f"Moonraker returned unexpected response for {path}")
     result = payload.get("result")
     if not isinstance(result, dict):
         raise ValueError(f"Moonraker returned no result for {path}")
@@ -53,9 +55,13 @@ def detect(objects: list[str]) -> dict[str, Any]:
     )
     features = {
         "motion": all(name in available for name in ("toolhead", "gcode")),
-        "homing": "toolhead" in available,
+        "homing": all(name in available for name in ("toolhead", "gcode")),
         "extrusion": "extruder" in available,
-        "temperature": any(name.startswith("extruder") for name in available),
+        "temperature": any(
+            name == "extruder"
+            or (name.startswith("extruder") and name[8:].isdigit())
+            for name in available
+        ),
         "bed_temperature": "heater_bed" in available,
         "fan": "fan" in available,
         "lights": any(
@@ -64,8 +70,13 @@ def detect(objects: list[str]) -> dict[str, Any]:
         ),
         "print_controls": "print_stats" in available,
         "filament_macros": {
-            action: f"{action.upper()}_FILAMENT" in macros
-            for action in ("load", "unload", "purge", "select_tool")
+            action: macro in macros
+            for action, macro in {
+                "load": "LOAD_FILAMENT",
+                "unload": "UNLOAD_FILAMENT",
+                "purge": "PURGE_FILAMENT",
+                "select_tool": "SELECT_TOOL",
+            }.items()
         },
         "gcode_macros": macros,
         "advanced_macros": advanced_capability(macros),

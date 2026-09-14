@@ -47,6 +47,9 @@ project emerges from the workshop with a perfect release process.
   safety-critical actions.
 - Hardened bridge authorization to reject unknown actions and single-use
   pairing-code replay.
+- Corrected Moonraker feature detection for homing, heated extruders, malformed
+  responses, and the documented `SELECT_TOOL` macro. The setup guide now
+  uploads the read-only probe and validates KlipperScreen before boot enablement.
 
 ## [1.3.2] — 2026-07-23
 

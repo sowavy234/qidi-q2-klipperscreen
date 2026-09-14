@@ -24,6 +24,7 @@ class FeatureDetectionTests(unittest.TestCase):
                 "print_stats",
                 "gcode_macro LOAD_FILAMENT",
                 "gcode_macro UNLOAD_FILAMENT",
+                "gcode_macro SELECT_TOOL",
             ]
         )
 
@@ -33,17 +34,43 @@ class FeatureDetectionTests(unittest.TestCase):
         self.assertTrue(features["bed_temperature"])
         self.assertTrue(features["print_controls"])
         self.assertEqual(features["filament_macros"]["load"], True)
+        self.assertEqual(features["filament_macros"]["select_tool"], True)
         self.assertEqual(features["filament_macros"]["purge"], False)
 
     def test_missing_objects_disable_controls(self):
         features = MODULE.detect(["toolhead"])
 
         self.assertFalse(features["motion"])
-        self.assertTrue(features["homing"])
+        self.assertFalse(features["homing"])
         self.assertFalse(features["extrusion"])
+        self.assertFalse(features["temperature"])
         self.assertFalse(features["fan"])
         self.assertFalse(features["print_controls"])
         self.assertEqual(features["gcode_macros"], [])
+
+    def test_non_heater_extruder_objects_do_not_enable_temperature(self):
+        features = MODULE.detect(["toolhead", "gcode", "extruder_stepper"])
+
+        self.assertFalse(features["temperature"])
+
+    def test_request_rejects_non_object_json(self):
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self):
+                return b"[]"
+
+        original = MODULE.urllib.request.urlopen
+        MODULE.urllib.request.urlopen = lambda *args, **kwargs: Response()
+        try:
+            with self.assertRaises(ValueError):
+                MODULE.request("http://printer", "printer/objects/list")
+        finally:
+            MODULE.urllib.request.urlopen = original
 
 
 if __name__ == "__main__":
