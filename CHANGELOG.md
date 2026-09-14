@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Package the read-only Moonraker feature probe in fresh installer installs;
+  missing optional helper modules now report unavailable camera support instead
+  of failing installation.
+
 This file records public installer releases. The format is inspired by
 [Keep a Changelog](https://keepachangelog.com/), minus the fiction that a home
 project emerges from the workshop with a perfect release process.

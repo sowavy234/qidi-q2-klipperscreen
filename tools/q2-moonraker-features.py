@@ -23,6 +23,8 @@ def advanced_capability(macros: list[str]) -> dict[str, bool]:
 
 def camera_capability() -> dict[str, object]:
     module_path = Path(__file__).with_name("q2-filament.py")
+    if not module_path.exists():
+        return {"available": False, "reason": "q2-filament.py is not installed"}
     spec = importlib.util.spec_from_file_location("q2_filament", module_path)
     if spec is None or spec.loader is None:
         raise RuntimeError("cannot load QIDI camera capability helper")

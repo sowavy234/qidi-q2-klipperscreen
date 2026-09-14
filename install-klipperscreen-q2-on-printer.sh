@@ -876,6 +876,77 @@ GESTURE_SERVICE
         /etc/default/klipperscreen-q2
     install -o qidi -g qidi -m 0644 "${work_dir}/KlipperScreen.conf" \
         "${QIDI_HOME}/printer_data/config/KlipperScreen.conf"
+    install_feature_probe
+}
+
+install_feature_probe() {
+    install -d -m 0755 "${QIDI_HOME}"
+    cat >"${QIDI_HOME}/q2-moonraker-features.py" <<'FEATURE_PROBE'
+#!/usr/bin/env python3
+import argparse
+import json
+import sys
+import urllib.request
+
+def request(base_url, path):
+    with urllib.request.urlopen(f"{base_url.rstrip('/')}/{path}", timeout=2) as response:
+        payload = json.load(response)
+    if not isinstance(payload, dict):
+        raise ValueError("Moonraker returned a non-object response")
+    result = payload.get("result")
+    if not isinstance(result, dict):
+        raise ValueError("Moonraker returned no object result")
+    return result
+
+def detect(objects):
+    available = set(objects)
+    macros = sorted(name.removeprefix("gcode_macro ")
+                    for name in available if name.startswith("gcode_macro "))
+    return {
+        "motion": all(name in available for name in ("toolhead", "gcode")),
+        "homing": all(name in available for name in ("toolhead", "gcode")),
+        "extrusion": "extruder" in available,
+        "temperature": any(
+            name == "extruder" or
+            (name.startswith("extruder") and name[8:].isdigit())
+            for name in available
+        ),
+        "bed_temperature": "heater_bed" in available,
+        "fan": "fan" in available,
+        "print_controls": "print_stats" in available,
+        "filament_macros": {
+            action: macro in macros for action, macro in {
+                "load": "LOAD_FILAMENT",
+                "unload": "UNLOAD_FILAMENT",
+                "purge": "PURGE_FILAMENT",
+                "select_tool": "SELECT_TOOL",
+            }.items()
+        },
+        "gcode_macros": macros,
+    }
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--url", default="http://127.0.0.1:7125")
+    parser.add_argument("--json", action="store_true", dest="as_json")
+    args = parser.parse_args()
+    try:
+        objects = request(args.url, "printer/objects/list").get("objects")
+        if not isinstance(objects, list) or not all(isinstance(item, str) for item in objects):
+            raise ValueError("Moonraker returned an invalid object list")
+        features = detect(objects)
+    except (OSError, ValueError) as error:
+        print(f"feature detection failed: {error}", file=sys.stderr)
+        return 1
+    print(json.dumps(features, sort_keys=True) if args.as_json else
+          "\n".join(f"{name}: {value}" for name, value in features.items()))
+    return 0
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+FEATURE_PROBE
+    chmod 0755 "${QIDI_HOME}/q2-moonraker-features.py"
+    chown qidi:qidi "${QIDI_HOME}/q2-moonraker-features.py"
 
     usermod -a -G video,input qidi
     systemctl daemon-reload

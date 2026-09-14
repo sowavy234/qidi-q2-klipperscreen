@@ -234,11 +234,12 @@ Change to the repository directory and run:
 scp \
   install-klipperscreen-q2-on-printer.sh \
   install-klipperscreen-q2-on-printer.sh.sha256 \
-  tools/q2-moonraker-features.py \
-  tools/q2-filament.py \
-  tools/q2-safety.py \
   mks@PRINTER_IP:/home/qidi/
 ```
+
+The installer embeds the read-only Moonraker feature probe for fresh installs.
+The helper scripts are uploaded separately only when using the existing-install
+update flow below.
 
 Enter the SSH password when prompted. A successful upload returns to the local
 prompt without drama, fireworks, or a certificate suitable for framing.
